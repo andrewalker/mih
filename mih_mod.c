@@ -166,6 +166,17 @@ static int __init mod_Start(void)
 	if (err)
 		return err;
 
+	// registers routine to watch for changes in the status of devices
+	if(register_netdevice_notifier(&mih_netdev_notifier)) {
+		printk(KERN_INFO "MIH DevMon: failure registering netdev notifier\n");
+		return -1;
+	}
+	// if(register_netdevice_notifier(&mih_netdev_notifier)) {
+	if(register_inetaddr_notifier(&mih_inaddr_notifier)) {
+		printk(KERN_INFO "MIH DevMon: failure registering inetaddr notifier\n");
+		return -1;
+	}
+
 	// create working kernel threads
 /* por enquanto, nao criar essa thread
 	if((_net_hand_t=kthread_run(NetHandler,NULL,MODULE_NAME))==NULL)
@@ -210,6 +221,10 @@ static void __exit mod_End(void)
 		// printk(KERN_INFO "_mihf_t's state: %ld\n",_mihf_t->state);
 		kthread_stop(_mihf_t);
 	}
+
+	// unregisters routine
+	unregister_netdevice_notifier(&mih_netdev_notifier);
+	unregister_inetaddr_notifier(&mih_inaddr_notifier);
 
 	// frees the memory used by the sending and receiving buffers
 	kfree(_snd_buf);

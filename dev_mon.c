@@ -280,16 +280,6 @@ DevMon(void *data)
    	printk(KERN_INFO "MIH DevMon: failure detecting the interfaces\n");
 		// return -1;
 	}
-	// registers routine to watch for changes in the status of devices
-	if(register_netdevice_notifier(&mih_netdev_notifier)) {
-		printk(KERN_INFO "MIH DevMon: failure registering netdev notifier\n");
-		return -1;
-	}
-	// if(register_netdevice_notifier(&mih_netdev_notifier)) {
-	if(register_inetaddr_notifier(&mih_inaddr_notifier)) {
-		printk(KERN_INFO "MIH DevMon: failure registering inetaddr notifier\n");
-		return -1;
-	}
 
    // Loops on the periodic inspection of detected devices
 
@@ -330,10 +320,6 @@ DevMon(void *data)
          break;
    }
    // printk(KERN_INFO "MIH: device monitor thread stopping\n");
-
-	// unregisters routine
-	unregister_netdevice_notifier(&mih_netdev_notifier);
-	unregister_inetaddr_notifier(&mih_inaddr_notifier);
 
    return 0;
 }
