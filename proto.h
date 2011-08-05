@@ -1,9 +1,6 @@
-
 /*
-	Protocol handling functions
+ * Protocol handling functions
  */
-
-// function prototypes
 
 int ProcessRequest(char *in_buf, int in_len);
 int ProcessService(char *in_buf, int in_len);
@@ -36,4 +33,3 @@ int NetHOCommit(char *in_buf, int in_len);
 int N2NHOCommit(char *in_buf, int in_len);
 int MNHOComplete(char *in_buf, int in_len);
 int N2NHOComplete(char *in_buf, int in_len);
-
