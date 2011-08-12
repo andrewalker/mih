@@ -1,36 +1,27 @@
 /*
-	MIHF: waits on events and decides on handovers
-*/
+ * MIHF: waits on events and decides on handovers.
+ * Waits for notifications arriving from the local LINK layer or updates about
+ * subscribed events from remote MIHFs.
+ */
 
-/*
-	Waits for notifications arriving from the local LINK layer
-or updates about subscribed events from remote MIHFs
-*/
-
-int
-Mihf(void *data)
+int Mihf(void *data)
 {
-	// printk(KERN_INFO "Media Independent Handover Function active\n");
+	/* Registers with local L2 entity.
+	 * Subscribes to local Link events.
+	 * Detects and, if detected, register with remote MIHF / MIHIS.
+	 * Subscribes to remote events.
+	 */
 
-	// registers with local L2 entity
-	// subscribes to local Link events
-	// detects and, if detected, register with remote MIHF / MIHIS
-	// subscribes to remote events
-
-	while(1) {
-		// waits on events notifications: indications, confirms
+	while (1) {
+		/* Waits on events notifications: indications, confirms. */
 
 		msleep(5000);
-		// printk(KERN_INFO "MIHF");
 
-		// decides on starting a handover
+		/* Decides on starting a handover. */
 
 		if (kthread_should_stop())
 			break;
 	}
-	// printk(KERN_INFO "MIHF thread stopping\n");
 
 	return 0;
 }
-
-
