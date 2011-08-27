@@ -110,7 +110,7 @@ int NetHandler(void *data)
 						" connection on data socket\n");
 				/* Sleep to avoid CPU use... Bad: delays
 				   accepting new connections. (In case of non
-				   blocking socket. */
+				   blocking socket.) */
 				/* msleep(5000); */
 			} else {
 				inet = inet_sk(new_sock->sk);
