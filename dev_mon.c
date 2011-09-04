@@ -1,9 +1,7 @@
 /*
  * Device monitor handler: monitor the status of local devices and processes
  * the executions of the callback function for device monitoring.
- */
-
-/*
+ *
  * Detect local interfaces.
  * Start monitoring changes in local interfaces status.
  * Send indications to subscribers.
@@ -42,7 +40,7 @@ static int
 NetDevNotifier(struct notifier_block *nb, unsigned long event, void *arg)
 {
 	struct net_device *dev = arg;
-	u8 ssid[IEEE80211_MAX_SSID_LEN+1];
+	u8 ssid[IEEE80211_MAX_SSID_LEN + 1];
 	struct wireless_dev *wdev = dev->ieee80211_ptr;
 	struct iw_statistics *iw_stats;
 
