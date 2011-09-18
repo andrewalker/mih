@@ -113,38 +113,18 @@ int NetHandler(void *data)
 				   blocking socket.) */
 				/* msleep(5000); */
 			} else {
-				inet = inet_sk(new_sock->sk);
-				if (inet) {
-					printk(KERN_INFO "MIH: accepted tcp %p"
-							"I4:%u -> %pI4:%u\n",
-						&inet->inet_saddr,
-						ntohs(inet->inet_sport),
-						&inet->inet_daddr,
-						ntohs(inet->inet_dport));
+				/* Puts socket in queue to be read by MIHF. */
+				spin_lock(&buf_nh_tcp_spinlock);
+				if (buf_nh_tcp_available_socks == 16) {
+					/* Error; queue's full. */
+				} else {
+					*buf_nh_tcp_in = new_sock;
+					buf_nh_tcp_in++;
+					buf_nh_tcp_available_socks++;
 				}
+				spin_unlock(&buf_nh_tcp_spinlock);
 
-				msg.msg_name = 0;
-				msg.msg_namelen = 0;
-				msg.msg_iov = &iov;
-				msg.msg_iovlen = 1;
-				msg.msg_control = NULL;
-				msg.msg_controllen = 0;
-				msg.msg_flags = 0;
-				msg.msg_iov->iov_base = _rcv_buf;
-				msg.msg_iov->iov_len = MIH_PDU_LEN;
-
-			read_again:
-				len = sock_recvmsg(new_sock, &msg, MIH_PDU_LEN,
-						0);
-				if (len == -EAGAIN || len == -ERESTARTSYS) {
-					goto read_again;
-				}
-				if (ProcessRequest(_rcv_buf, len) < 0) {
-					printk(KERN_INFO "MIH: error processing"
-							"request\n");
-				}
 			}
-			sock_release(new_sock);
 		}
 		if (kthread_should_stop())
 			break;

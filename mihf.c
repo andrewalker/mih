@@ -12,8 +12,22 @@ int Mihf(void *data)
 	 * Subscribes to remote events.
 	 */
 
+	struct socket *sock = NULL;
+
 	while (1) {
 		/* Waits on events notifications: indications, confirms. */
+
+		/* Reads socket queue from NetHandler. */
+		spin_lock(&buf_nh_tcp_spinlock);
+		if (buf_nh_tcp_available_socks) {
+			sock = *buf_nh_tcp_out;
+			buf_nh_tcp_out++;
+			buf_nh_tcp_available_socks--;
+		}
+		spin_unlock(&buf_nh_tcp_spinlock);
+
+		/* Process the socket and releases it. */
+		sock_release(sock);
 
 		msleep(5000);
 

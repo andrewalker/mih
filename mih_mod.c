@@ -49,6 +49,15 @@ struct task_struct *_mihf_t = NULL;	/* Kernel thread. */
 mih_tlv_t _src_mihf_id;
 mih_tlv_t _dst_mihf_id;
 
+#define _NH_TCP_QUEUE_SIZE_ 16
+/* Queue for sockets. */
+struct socket *buf_nh_tcp[_NH_TCP_QUEUE_SIZE_] = {NULL};
+struct socket **buf_nh_tcp_in = NULL; /* Point of entrance in the queue. */
+struct socket **buf_nh_tcp_out = NULL; /* Point of withdrawal from the queue. */
+
+int buf_nh_tcp_available_socks = 0;
+spinlock_t buf_nh_tcp_spinlock;
+
 
 #include "message.c"
 #include "ksock.c"
@@ -118,6 +127,10 @@ static int __init mod_Start(void)
 								"notifier\n");
 		return -1;
 	}
+
+	/* Creates and sets communication structures between threads. */
+	buf_nh_tcp_in = buf_nh_tcp_out = buf_nh_tcp;
+	spin_lock_init(&buf_nh_tcp_spinlock);
 
 	/* Create working kernel threads. */
 	/* Do not create this thread for now.
