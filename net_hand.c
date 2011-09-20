@@ -119,7 +119,10 @@ int NetHandler(void *data)
 					/* Error; queue's full. */
 				} else {
 					*buf_nh_tcp_in = new_sock;
-					buf_nh_tcp_in++;
+					if (++buf_nh_tcp_in ==
+							buf_nh_tcp + 16) {
+						buf_nh_tcp_in = buf_nh_tcp;
+					}
 					buf_nh_tcp_available_socks++;
 				}
 				spin_unlock(&buf_nh_tcp_spinlock);
