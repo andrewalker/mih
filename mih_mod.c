@@ -52,8 +52,8 @@ mih_tlv_t _dst_mihf_id;
 #define _NH_TCP_QUEUE_SIZE_ 16
 /* Queue for sockets. */
 struct socket *buf_nh_tcp[_NH_TCP_QUEUE_SIZE_] = {NULL};
-struct socket **buf_nh_tcp_in = NULL; /* Point of entrance in the queue. */
-struct socket **buf_nh_tcp_out = NULL; /* Point of withdrawal from the queue. */
+int buf_nh_tcp_in = 0; /* Point of entrance in the queue. */
+int buf_nh_tcp_out = 0; /* Point of withdrawal from the queue. */
 
 int buf_nh_tcp_available_socks = 0;
 spinlock_t buf_nh_tcp_spinlock;
@@ -129,7 +129,6 @@ static int __init mod_Start(void)
 	}
 
 	/* Creates and sets communication structures between threads. */
-	buf_nh_tcp_in = buf_nh_tcp_out = buf_nh_tcp;
 	spin_lock_init(&buf_nh_tcp_spinlock);
 
 	/* Create working kernel threads. */

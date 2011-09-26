@@ -115,14 +115,14 @@ int NetHandler(void *data)
 			} else {
 				/* Puts socket in queue to be read by MIHF. */
 				spin_lock(&buf_nh_tcp_spinlock);
-				if (buf_nh_tcp_available_socks == 16) {
-					/* Error; queue's full. */
+				if (buf_nh_tcp_available_socks ==
+						_NH_TCP_QUEUE_SIZE_) {
+					/* Queue's full. */
+					sock_release(new_sock);
 				} else {
-					*buf_nh_tcp_in = new_sock;
-					if (++buf_nh_tcp_in ==
-							buf_nh_tcp + 16) {
-						buf_nh_tcp_in = buf_nh_tcp;
-					}
+					buf_nh_tcp[buf_nh_tcp_in] = new_sock;
+					buf_nh_tcp_in++;
+					buf_nh_tcp_in %= _NH_TCP_QUEUE_SIZE_;
 					buf_nh_tcp_available_socks++;
 				}
 				spin_unlock(&buf_nh_tcp_spinlock);

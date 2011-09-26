@@ -20,10 +20,9 @@ int Mihf(void *data)
 		/* Reads socket queue from NetHandler. */
 		spin_lock(&buf_nh_tcp_spinlock);
 		if (buf_nh_tcp_available_socks) {
-			sock = *buf_nh_tcp_out;
-			if (++buf_nh_tcp_out == buf_nh_tcp + 16) {
-				buf_nh_tcp_out = buf_nh_tcp;
-			}
+			sock = buf_nh_tcp[buf_nh_tcp_out];
+			buf_nh_tcp_out++;
+			buf_nh_tcp_out %= _NH_TCP_QUEUE_SIZE_;
 			buf_nh_tcp_available_socks--;
 		}
 		spin_unlock(&buf_nh_tcp_spinlock);
