@@ -51,14 +51,20 @@ struct task_struct *_mihf_t = NULL;	/* Kernel thread. */
 mih_tlv_t _src_mihf_id;
 mih_tlv_t _dst_mihf_id;
 
-#define _NH_TCP_QUEUE_SIZE_ 16
-/* Queue for sockets. */
-struct socket *buf_nh_tcp[_NH_TCP_QUEUE_SIZE_] = {NULL};
-int buf_nh_tcp_in = 0; /* Point of entrance in the queue. */
-int buf_nh_tcp_out = 0; /* Point of withdrawal from the queue. */
+/* Structure to represent a queued task */
+struct queue_task {
+	void (*task)(void *parameter);
+	void *parameter;
+};
 
-int buf_nh_tcp_available_socks = 0;
-spinlock_t buf_nh_tcp_spinlock;
+#define _QUEUE_SIZE_ 16
+/* Queue for sockets. */
+struct queue_task *task_queue[_QUEUE_SIZE_] = {NULL};
+int queue_in = 0; /* Point of entrance in the queue. */
+int queue_out = 0; /* Point of withdrawal from the queue. */
+
+int queued_tasks = 0;
+spinlock_t queue_spinlock;
 
 int _net_hand_dying = 0;
 
@@ -138,7 +144,7 @@ static int __init mod_Start(void)
 
 	DBG("Initializing spin lock");
 	/* Creates and sets communication structures between threads. */
-	spin_lock_init(&buf_nh_tcp_spinlock);
+	spin_lock_init(&queue_spinlock);
 
 	DBG("Creating kernel threads");
 	/* Create working kernel threads. */

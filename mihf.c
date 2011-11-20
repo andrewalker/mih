@@ -12,7 +12,7 @@ int Mihf(void *data)
 	 * Subscribes to remote events.
 	 */
 
-	struct socket *sock = NULL;
+	struct queue_task *task = NULL;
 
 	DBG("Entering Mihf");
 	DBG("Entering mihf handler loop");
@@ -22,29 +22,25 @@ int Mihf(void *data)
 
 		/* Reads socket queue from NetHandler. */
 		DBG("Acquiring lock");
-		spin_lock(&buf_nh_tcp_spinlock);
-		if (buf_nh_tcp_available_socks) {
-			DBG("Retrieving socket from queue");
-			sock = buf_nh_tcp[buf_nh_tcp_out];
-			buf_nh_tcp_out++;
-			buf_nh_tcp_out %= _NH_TCP_QUEUE_SIZE_;
-			buf_nh_tcp_available_socks--;
-		} else {
-			DBG("Queue is empty");
-			sock = NULL;
+		spin_lock(&queue_spinlock);
+		if (queued_tasks) {
+			DBG("Retrieving task from queue");
+			task = task_queue[queue_out];
+			queue_out++;
+			queue_out %= _QUEUE_SIZE_;
+			queued_tasks--;
+
+			DBG("Executing task");
+			(*task->task)(task->parameter);
+
+			DBG("Freeing task structure");
+			kfree(task);
 		}
 		DBG("Releasing lock");
-		spin_unlock(&buf_nh_tcp_spinlock);
-
-		/* Process the socket and releases it. */
-		DBG("Releasing socket");
-		if (sock)
-			sock_release(sock);
+		spin_unlock(&queue_spinlock);
 
 		DBG("Sleeping");
 		msleep(5000);
-
-		/* Decides on starting a handover. */
 	}
 
 	DBG("Exited mihf handler loop");

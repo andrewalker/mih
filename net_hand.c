@@ -81,6 +81,18 @@ err:
 }
 
 
+void handle_connection(void *parameter)
+{
+	struct socket *sock = (struct socket*)parameter;
+	DBG("Entering handle_connection");
+
+	/* Decides on starting a handover. */
+
+	/* Process the socket and releases it. */
+	DBG("Releasing socket");
+	if (sock)
+		sock_release(sock);
+}
 
 int NetHandler(void *data)
 {
@@ -89,6 +101,7 @@ int NetHandler(void *data)
 	struct msghdr msg;
 	struct iovec iov;
 	struct inet_sock *inet;
+	struct queue_task *task;
 
 	DBG("Entering NetHandler");
 	/* Should we do the network initializations here? */
@@ -121,20 +134,27 @@ int NetHandler(void *data)
 
 		/* Puts socket in queue to be read by MIHF. */
 		DBG("Acquiring lock");
-		spin_lock(&buf_nh_tcp_spinlock);
-		if (buf_nh_tcp_available_socks == _NH_TCP_QUEUE_SIZE_) {
+		spin_lock(&queue_spinlock);
+		if (queued_tasks == _QUEUE_SIZE_) {
 			/* Queue's full. */
 			DBG("Queue is full, releasing socket");
 			sock_release(new_sock);
 		} else {
-			DBG("Placing socket in the queue");
-			buf_nh_tcp[buf_nh_tcp_in] = new_sock;
-			buf_nh_tcp_in++;
-			buf_nh_tcp_in %= _NH_TCP_QUEUE_SIZE_;
-			buf_nh_tcp_available_socks++;
+			DBG("Allocating task structure");
+			task = (struct task*)kmalloc(sizeof(*task), GFP_KERNEL);
+
+			DBG("Preparing task to handle the socket");
+			task->parameter = (void*)new_sock;
+			task->task = &handle_connection;
+			
+			DBG("Placing task in the queue");
+			task_queue[queue_in] = task;
+			queue_in++;
+			queue_in %= _QUEUE_SIZE_;
+			queued_tasks++;
 		}
 		DBG("Releasing lock");
-		spin_unlock(&buf_nh_tcp_spinlock);
+		spin_unlock(&queue_spinlock);
 	}
 
 	DBG("Exited net handler loop");
@@ -143,3 +163,4 @@ int NetHandler(void *data)
 	DBG("Exiting NetHandler");
 	return 0;
 }
+
