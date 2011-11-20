@@ -14,29 +14,40 @@ int Mihf(void *data)
 
 	struct socket *sock = NULL;
 
-	while (1) {
+	DBG("Entering Mihf");
+	DBG("Entering mihf handler loop");
+	while (!kthread_should_stop()) {
+		DBG("Loop iteration");
 		/* Waits on events notifications: indications, confirms. */
 
 		/* Reads socket queue from NetHandler. */
+		DBG("Acquiring lock");
 		spin_lock(&buf_nh_tcp_spinlock);
 		if (buf_nh_tcp_available_socks) {
+			DBG("Retrieving socket from queue");
 			sock = buf_nh_tcp[buf_nh_tcp_out];
 			buf_nh_tcp_out++;
 			buf_nh_tcp_out %= _NH_TCP_QUEUE_SIZE_;
 			buf_nh_tcp_available_socks--;
+		} else {
+			DBG("Queue is empty");
+			sock = NULL;
 		}
+		DBG("Releasing lock");
 		spin_unlock(&buf_nh_tcp_spinlock);
 
 		/* Process the socket and releases it. */
-		sock_release(sock);
+		DBG("Releasing socket");
+		if (sock)
+			sock_release(sock);
 
+		DBG("Sleeping");
 		msleep(5000);
 
 		/* Decides on starting a handover. */
-
-		if (kthread_should_stop())
-			break;
 	}
 
+	DBG("Exited mihf handler loop");
+	DBG("Exiting Mihf");
 	return 0;
 }

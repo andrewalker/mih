@@ -97,7 +97,7 @@ int NetHandler(void *data)
 		return -1;
 	}
 
-	DBG("Entering handler loop");
+	DBG("Entering net handler loop");
 	/* Waits for messages from the network. */
 	while (!kthread_should_stop() && !_net_hand_dying) {
 		DBG("Loop iteration");
@@ -120,21 +120,24 @@ int NetHandler(void *data)
 		}
 
 		/* Puts socket in queue to be read by MIHF. */
-		DBG("Place socket in the queue");
+		DBG("Acquiring lock");
 		spin_lock(&buf_nh_tcp_spinlock);
 		if (buf_nh_tcp_available_socks == _NH_TCP_QUEUE_SIZE_) {
 			/* Queue's full. */
+			DBG("Queue is full, releasing socket");
 			sock_release(new_sock);
 		} else {
+			DBG("Placing socket in the queue");
 			buf_nh_tcp[buf_nh_tcp_in] = new_sock;
 			buf_nh_tcp_in++;
 			buf_nh_tcp_in %= _NH_TCP_QUEUE_SIZE_;
 			buf_nh_tcp_available_socks++;
 		}
+		DBG("Releasing lock");
 		spin_unlock(&buf_nh_tcp_spinlock);
 	}
 
-	DBG("Exited handler loop");
+	DBG("Exited net handler loop");
 	DBG("Releasing socket");
 	sock_release(_insock);
 	DBG("Exiting NetHandler");
