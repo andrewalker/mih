@@ -42,6 +42,8 @@ MODULE_PARM_DESC(verbose, "Causes control messages to be sent to "
 
 /* Global variables. */
 
+#define DBG(x) printk(KERN_INFO x)
+
 struct task_struct *_net_hand_t = NULL;	/* Kernel thread. */
 struct task_struct *_dev_mon_t = NULL;	/* Kernel thread. */
 struct task_struct *_mihf_t = NULL;	/* Kernel thread. */
@@ -58,6 +60,8 @@ int buf_nh_tcp_out = 0; /* Point of withdrawal from the queue. */
 int buf_nh_tcp_available_socks = 0;
 spinlock_t buf_nh_tcp_spinlock;
 
+int _net_hand_dying = 0;
+
 
 #include "message.c"
 #include "ksock.c"
@@ -67,6 +71,8 @@ spinlock_t buf_nh_tcp_spinlock;
 #include "dev_mon.c"
 #include "mihf.c"
 
+
+void kill_net_hand_thread(void);
 
 /*
  * Controls whether symbols are exported or not.
@@ -106,6 +112,7 @@ static int __init mod_Start(void)
 {
 	int err;
 
+	DBG("Entering mod_Start");
 	allow_signal(SIGKILL);
 
 	err = SymbolExport();
@@ -116,6 +123,7 @@ static int __init mod_Start(void)
 	if (err)
 		return err;
 
+	DBG("Registering notifiers");
 	/* Registers routine to watch for changes in the status of devices. */
 	if (register_netdevice_notifier(&mih_netdev_notifier)) {
 		printk(KERN_INFO "MIH DevMon: failure registering netdev "
@@ -128,14 +136,14 @@ static int __init mod_Start(void)
 		return -1;
 	}
 
+	DBG("Initializing spin lock");
 	/* Creates and sets communication structures between threads. */
 	spin_lock_init(&buf_nh_tcp_spinlock);
 
+	DBG("Creating kernel threads");
 	/* Create working kernel threads. */
-	/* Do not create this thread for now.
 	if ((_net_hand_t = kthread_run(NetHandler, NULL, MODULE_NAME)) == NULL)
 		goto kthread_failure;
-	*/
 	if ((_dev_mon_t = kthread_run(DevMon, NULL, MODULE_NAME)) == NULL)
 		goto kthread_failure;
 	if ((_mihf_t = kthread_run(Mihf, NULL, MODULE_NAME)) == NULL)
@@ -151,36 +159,80 @@ static int __init mod_Start(void)
 	return 0;
 
 kthread_failure:
-	if (_net_hand_t)
-		kthread_stop(_net_hand_t);
+	DBG("Failed creating a kernel thread");
+	kill_net_hand_thread();
+	DBG("Killing dev_mon thread");
 	if (_dev_mon_t)
 		kthread_stop(_dev_mon_t);
+	DBG("Killing mihf thread");
 	if (_mihf_t)
 		kthread_stop(_mihf_t);
 
 	return err;
 }
 
+void kill_net_hand_thread(void)
+{
+	int s;
+	struct sockaddr_in loopback_addr;
+	struct socket *wakeup_socket;
+
+	DBG("Entering kill_net_hand_thread");
+
+	if (!_net_hand_t)
+		return;
+
+	DBG("Notifying thread that it will be killed");
+	_net_hand_dying = 1;
+
+	DBG("Allocating sock_addr");
+	/* Use a socket to force the net_hand thread to wake up */
+	memset(&loopback_addr, 0, sizeof(loopback_addr));
+	loopback_addr.sin_family = AF_INET;
+	loopback_addr.sin_port = htons(MIHF_PORT);
+	loopback_addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+
+	DBG("Creating socket");
+	s = sock_create(PF_INET, SOCK_STREAM, IPPROTO_TCP, &wakeup_socket);
+	if (s < 0) {
+		printk(KERN_ERR "MIH Main module: error %d creating wake-up "
+				"socket\n", s);
+		return;
+	}
+
+	DBG("Connecting");
+	wakeup_socket->ops->connect(wakeup_socket,
+			(struct sockaddr *)&loopback_addr,
+			sizeof(loopback_addr), O_RDWR);
+	DBG("Shutting down the socket");
+	wakeup_socket->ops->shutdown(wakeup_socket, SHUT_RDWR);
+
+	DBG("Stopping thread");
+	kthread_stop(_net_hand_t);
+}
 
 static void __exit mod_End(void)
 {
+	DBG("Entering mod_End");
 	/* Stop kernel threads. */
-	if (_net_hand_t) {
-		/* Create a socket and connect to it to unblock the thread? */
-		kthread_stop(_net_hand_t);
-	}
+	DBG("Kill net_hand thread");
+	kill_net_hand_thread();
+	DBG("Kill dev_mon thread");
 	if (_dev_mon_t) {
 		kthread_stop(_dev_mon_t);
 	}
+	DBG("Kill mihf thread");
 	if (_mihf_t) {
 		kthread_stop(_mihf_t);
 	}
 
 	/* Unregisters routine. */
+	DBG("Unregistering notifiers");
 	unregister_netdevice_notifier(&mih_netdev_notifier);
 	unregister_inetaddr_notifier(&mih_inaddr_notifier);
 
 	/* Frees the memory used by the sending and receiving buffers. */
+	DBG("Free buffers");
 	kfree(_snd_buf);
 	kfree(_rcv_buf);
 
