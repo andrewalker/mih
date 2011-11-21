@@ -12,36 +12,13 @@ int Mihf(void *data)
 	 * Subscribes to remote events.
 	 */
 
-	struct queue_task *task = NULL;
-
 	DBG("Entering Mihf");
 	DBG("Entering mihf handler loop");
 	while (!kthread_should_stop() && !_threads_should_stop) {
 		DBG("Loop iteration");
 		/* Waits on events notifications: indications, confirms. */
 
-		DBG("Waiting for semaphore");
-		if (down_killable(&queue_semaphore) < 0)
-			printk(KERN_ERR "Semaphore was interrupted. Fatal?");
-
-		/* Reads socket queue from NetHandler. */
-		DBG("Acquiring lock");
-		spin_lock(&queue_spinlock);
-		if (queued_tasks) {
-			DBG("Retrieving task from queue");
-			task = task_queue[queue_out];
-			queue_out++;
-			queue_out %= _QUEUE_SIZE_;
-			queued_tasks--;
-
-			DBG("Executing task");
-			(*task->task)(task->parameter);
-
-			DBG("Freeing task structure");
-			kfree(task);
-		}
-		DBG("Releasing lock");
-		spin_unlock(&queue_spinlock);
+		execute_task();
 	}
 
 	DBG("Waiting for proper termination signal");

@@ -101,7 +101,6 @@ int NetHandler(void *data)
 	struct msghdr msg;
 	struct iovec iov;
 	struct inet_sock *inet;
-	struct queue_task *task;
 
 	DBG("Entering NetHandler");
 	/* Should we do the network initializations here? */
@@ -133,34 +132,10 @@ int NetHandler(void *data)
 		}
 
 		/* Puts socket in queue to be read by MIHF. */
-		DBG("Acquiring lock");
-		spin_lock(&queue_spinlock);
-		if (queued_tasks == _QUEUE_SIZE_) {
+		if (queue_task(&handle_connection, (void*)new_sock) == 1) {
 			/* Queue's full. */
 			DBG("Queue is full, releasing socket");
 			sock_release(new_sock);
-
-			DBG("Releasing lock");
-			spin_unlock(&queue_spinlock);
-		} else {
-			DBG("Allocating task structure");
-			task = (struct task*)kmalloc(sizeof(*task), GFP_KERNEL);
-
-			DBG("Preparing task to handle the socket");
-			task->parameter = (void*)new_sock;
-			task->task = &handle_connection;
-			
-			DBG("Placing task in the queue");
-			task_queue[queue_in] = task;
-			queue_in++;
-			queue_in %= _QUEUE_SIZE_;
-			queued_tasks++;
-
-			DBG("Releasing lock");
-			spin_unlock(&queue_spinlock);
-
-			DBG("Notifying the semaphore");
-			up(&queue_semaphore);
 		}
 	}
 

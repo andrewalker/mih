@@ -51,25 +51,10 @@ struct task_struct *_mihf_t = NULL;	/* Kernel thread. */
 mih_tlv_t _src_mihf_id;
 mih_tlv_t _dst_mihf_id;
 
-/* Structure to represent a queued task */
-struct queue_task {
-	void (*task)(void *parameter);
-	void *parameter;
-};
-
-#define _QUEUE_SIZE_ 16
-/* Queue for sockets. */
-struct queue_task *task_queue[_QUEUE_SIZE_] = {NULL};
-int queue_in = 0; /* Point of entrance in the queue. */
-int queue_out = 0; /* Point of withdrawal from the queue. */
-
-int queued_tasks = 0;
-spinlock_t queue_spinlock;
-struct semaphore queue_semaphore;
-
 int _threads_should_stop = 0;
 
 
+#include "queue.h"
 #include "message.c"
 #include "ksock.c"
 #include "mih_sap.c"
@@ -130,6 +115,8 @@ static int __init mod_Start(void)
 	if (err)
 		return err;
 
+	init_queue();
+
 	DBG("Registering notifiers");
 	/* Registers routine to watch for changes in the status of devices. */
 	if (register_netdevice_notifier(&mih_netdev_notifier)) {
@@ -142,11 +129,6 @@ static int __init mod_Start(void)
 								"notifier\n");
 		return -1;
 	}
-
-	DBG("Initializing spin lock");
-	/* Creates and sets communication structures between threads. */
-	spin_lock_init(&queue_spinlock);
-	sema_init(&queue_semaphore, 0);
 
 	DBG("Creating kernel threads");
 	/* Create working kernel threads. */
