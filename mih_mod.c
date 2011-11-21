@@ -65,8 +65,9 @@ int queue_out = 0; /* Point of withdrawal from the queue. */
 
 int queued_tasks = 0;
 spinlock_t queue_spinlock;
+struct semaphore queue_semaphore;
 
-int _net_hand_dying = 0;
+int _threads_should_stop = 0;
 
 
 #include "message.c"
@@ -145,6 +146,7 @@ static int __init mod_Start(void)
 	DBG("Initializing spin lock");
 	/* Creates and sets communication structures between threads. */
 	spin_lock_init(&queue_spinlock);
+	sema_init(&queue_semaphore, 0);
 
 	DBG("Creating kernel threads");
 	/* Create working kernel threads. */
@@ -166,6 +168,10 @@ static int __init mod_Start(void)
 
 kthread_failure:
 	DBG("Failed creating a kernel thread");
+
+	DBG("Notifying threads they should stop");
+	_threads_should_stop = 1;
+
 	kill_net_hand_thread();
 	DBG("Killing dev_mon thread");
 	if (_dev_mon_t)
@@ -187,9 +193,6 @@ void kill_net_hand_thread(void)
 
 	if (!_net_hand_t)
 		return;
-
-	DBG("Notifying thread that it will be killed");
-	_net_hand_dying = 1;
 
 	DBG("Allocating sock_addr");
 	/* Use a socket to force the net_hand thread to wake up */
@@ -219,6 +222,9 @@ void kill_net_hand_thread(void)
 
 static void __exit mod_End(void)
 {
+	DBG("Notifying threads they should stop");
+	_threads_should_stop = 1;
+
 	DBG("Entering mod_End");
 	/* Stop kernel threads. */
 	DBG("Kill net_hand thread");

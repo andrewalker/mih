@@ -16,9 +16,13 @@ int Mihf(void *data)
 
 	DBG("Entering Mihf");
 	DBG("Entering mihf handler loop");
-	while (!kthread_should_stop()) {
+	while (!kthread_should_stop() && !_threads_should_stop) {
 		DBG("Loop iteration");
 		/* Waits on events notifications: indications, confirms. */
+
+		DBG("Waiting for semaphore");
+		if (down_killable(&queue_semaphore) < 0)
+			printk(KERN_ERR "Semaphore was interrupted. Fatal?");
 
 		/* Reads socket queue from NetHandler. */
 		DBG("Acquiring lock");
@@ -38,10 +42,11 @@ int Mihf(void *data)
 		}
 		DBG("Releasing lock");
 		spin_unlock(&queue_spinlock);
-
-		DBG("Sleeping");
-		msleep(5000);
 	}
+
+	DBG("Waiting for proper termination signal");
+	while (!kthread_should_stop())
+		msleep(1);
 
 	DBG("Exited mihf handler loop");
 	DBG("Exiting Mihf");

@@ -112,7 +112,7 @@ int NetHandler(void *data)
 
 	DBG("Entering net handler loop");
 	/* Waits for messages from the network. */
-	while (!kthread_should_stop() && !_net_hand_dying) {
+	while (!kthread_should_stop() && !_threads_should_stop) {
 		DBG("Loop iteration");
 		DBG("Creating socket");
 		if (sock_create(PF_INET, SOCK_STREAM, IPPROTO_TCP, &new_sock)
@@ -139,6 +139,9 @@ int NetHandler(void *data)
 			/* Queue's full. */
 			DBG("Queue is full, releasing socket");
 			sock_release(new_sock);
+
+			DBG("Releasing lock");
+			spin_unlock(&queue_spinlock);
 		} else {
 			DBG("Allocating task structure");
 			task = (struct task*)kmalloc(sizeof(*task), GFP_KERNEL);
@@ -152,14 +155,23 @@ int NetHandler(void *data)
 			queue_in++;
 			queue_in %= _QUEUE_SIZE_;
 			queued_tasks++;
+
+			DBG("Releasing lock");
+			spin_unlock(&queue_spinlock);
+
+			DBG("Notifying the semaphore");
+			up(&queue_semaphore);
 		}
-		DBG("Releasing lock");
-		spin_unlock(&queue_spinlock);
 	}
 
 	DBG("Exited net handler loop");
 	DBG("Releasing socket");
 	sock_release(_insock);
+
+	DBG("Waiting for proper termination signal");
+	while (!kthread_should_stop())
+		msleep(1);
+
 	DBG("Exiting NetHandler");
 	return 0;
 }
