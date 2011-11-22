@@ -36,33 +36,29 @@ Link_Detected_indication(link_det_info_t LinkDetectedInfo)
 }
 
 // (63)
-int
-Link_Up_indication(
-	link_tuple_id_t   LinkIdentifier,
-	link_addr_t       OldAccessRouter,
-	link_addr_t       NewAccessRouter,
-	ip_renewal_flag_t IPRenewalFlag,
-	ip_mob_mgmt_t     MobilityManagementSupport)
+void Link_Up_indication(void *parameter)
 {
+	struct Link_Up_indication_parameter *p =
+			(struct Link_Up_indication_parameter*)parameter;
 	// notify local & remote subscribers
 
 	printk(KERN_INFO "MIH: mih_link_sap Link_Up.indication\n");
 
-	return 0;
+	kfree(p->LinkIdentifier.link_addr);
+	kfree(p);
 }
 
 // (64)
-int
-Link_Down_indication(
-	link_tuple_id_t  LinkIdentifier,
-	link_addr_t      OldAccessRouter,
-	link_dn_reason_t ReasonCode)
+void Link_Down_indication(void *parameter)
 {
+	struct Link_Down_indication_parameter *p =
+			(struct Link_Down_indication_parameter*)parameter;
 	// notify local & remote subscribers
 
 	printk(KERN_INFO "MIH: mih_link_sap Link_Down.indication\n");
 
-	return 0;
+	kfree(p->LinkIdentifier.link_addr);
+	kfree(p);
 }
 
 // (65)
@@ -80,17 +76,16 @@ Link_Parameters_Report_indication(
 }
 
 // (66)
-int
-Link_Going_Down_indication(
-	link_tuple_id_t  LinkIdentifier,
-	uint16_t         TimeInterval,
-	link_gd_reason_t LinkGoingDownReason)
+void Link_Going_Down_indication(void *parameter)
 {
+	struct Link_Going_Down_indication_parameter *p =
+			(struct Link_Going_Down_indication_parameter*)parameter;
 	// notify local & remote subscribers
 
 	printk(KERN_INFO "MIH: mih_link_sap Link_Going_Down.indication\n");
 
-	return 0;
+	kfree(p->LinkIdentifier.link_addr);
+	kfree(p);
 }
 
 // (66)

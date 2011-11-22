@@ -44,7 +44,7 @@ NetDevNotifier(struct notifier_block *nb, unsigned long event, void *arg)
 	struct wireless_dev *wdev = dev->ieee80211_ptr;
 	struct iw_statistics *iw_stats;
 
-	if (wdev) { /* It's a  wireless interface... */
+	if (wdev) { /* It's a wireless interface... */
 
 		/* ssid is only valid if wdev->sme_state==...CONNECTED */
 		if (wdev->sme_state == CFG80211_SME_CONNECTED) {
@@ -60,7 +60,7 @@ NetDevNotifier(struct notifier_block *nb, unsigned long event, void *arg)
 			iw_stats =
 				dev->wireless_handlers->get_wireless_stats(dev);
 
-			printk(KERN_INFO "MIH: (%s): signal qual: %d  level: %d"
+			printk(KERN_INFO "MIH: (%s): signal qual: %d level: %d"
 					" noise: %d\n",
 				dev->name,
 				iw_stats->qual.qual,
@@ -192,106 +192,97 @@ int DevMon(void *data)
 		 */
 		msleep(5000);
 
-      if (kthread_should_stop())
-         break;
-   }
+		if (kthread_should_stop())
+			break;
+	}
 
-   return 0;
+	return 0;
 }
 
 
 void DevLinkUp(struct net_device *dev)
 {
-	link_tuple_id_t linkidentifier;
-	link_addr_t oldaccessrouter;
-	link_addr_t newaccessrouter;
-	ip_renewal_flag_t iprenewalflag;
-	ip_mob_mgmt_t mobilitymanagementsupport;
-	transport_addr_t mac_addr;
-	int status;
+	transport_addr_t *mac_addr = kmalloc(sizeof(*mac_addr), GFP_KERNEL);
+	struct Link_Up_indication_parameter *p =
+			kmalloc(sizeof(*p), GFP_KERNEL);
 
 	switch (dev->type) {
 		case ARPHRD_ETHER: /* Ethernet and 802.11 with ethernet
-				      framing. */
-			if (dev->ieee80211_ptr == NULL)
-				linkidentifier.link_id.link_type = ETHERNET;
-			else
-				linkidentifier.link_id.link_type =
-					WIRELESS_IEEE_802_11;
+					framing. */
+			if (dev->ieee80211_ptr == NULL) {
+				p->LinkIdentifier.link_id.link_type = ETHERNET;
+			} else {
+				p->LinkIdentifier.link_id.link_type =
+						WIRELESS_IEEE_802_11;
+			}
 			break;
 		case ARPHRD_IEEE80211: /* 801: IEEE 802.11 */
-			linkidentifier.link_id.link_type = WIRELESS_IEEE_802_11;
+			p->LinkIdentifier.link_id.link_type =
+					WIRELESS_IEEE_802_11;
 			break;
-	}
+	};
 
-	linkidentifier.link_id.link_addr.mac_addr.addr_type = 6; /* All 802. */
-	linkidentifier.link_id.link_addr.mac_addr.addr = dev->dev_addr;
-	mac_addr.addr_type = 6;
-	mac_addr.addr = dev->dev_addr;
-	linkidentifier.link_addr = (link_addr_t*)&mac_addr;
+	p->LinkIdentifier.link_id.link_addr.mac_addr.addr_type = 6; /* All 802. */
+	p->LinkIdentifier.link_id.link_addr.mac_addr.addr = dev->dev_addr;
+	mac_addr->addr_type = 6;
+	mac_addr->addr = dev->dev_addr;
+	p->LinkIdentifier.link_addr = (link_addr_t*)mac_addr;
 
-	oldaccessrouter.mac_addr.addr_type = 6;
-	newaccessrouter.mac_addr.addr_type = 6;
+	p->OldAccessRouter.mac_addr.addr_type = 6;
+	p->NewAccessRouter.mac_addr.addr_type = 6;
 
-	iprenewalflag = FALSE; /* How do we know this? */
-	mobilitymanagementsupport = 0;
+	p->IPRenewalFlag = FALSE; /* How do we know this? */
+	p->MobilityManagementSupport = 0;
 
-	status = Link_Up_indication(linkidentifier, oldaccessrouter,
-			newaccessrouter, iprenewalflag,
-			mobilitymanagementsupport);
+	queue_task(&Link_Up_indication, (void*)p);
 }
 
 void
 DevLinkDown(struct net_device *dev)
 {
-	link_tuple_id_t linkidentifier;
-	link_addr_t oldaccessrouter;
-	link_dn_reason_t reasoncode;
-	transport_addr_t mac_addr;
-	int status;
+	transport_addr_t *mac_addr = kmalloc(sizeof(*mac_addr), GFP_KERNEL);
+	struct Link_Down_indication_parameter *p =
+			kmalloc(sizeof(*p), GFP_KERNEL);
 
-	linkidentifier.link_id.link_type = ETHERNET; /* WIRELESS_IEEE_802_11 */
-	linkidentifier.link_id.link_addr.mac_addr.addr_type = 6; /* All 802. */
-	linkidentifier.link_id.link_addr.mac_addr.addr = dev->dev_addr;
-	mac_addr.addr_type = 6;
-	mac_addr.addr = dev->dev_addr;
-	linkidentifier.link_addr = (link_addr_t*)&mac_addr;
+	p->LinkIdentifier.link_id.link_type = ETHERNET; /* WIRELESS_IEEE_802_11 */
+	p->LinkIdentifier.link_id.link_addr.mac_addr.addr_type = 6; /* All 802. */
+	p->LinkIdentifier.link_id.link_addr.mac_addr.addr = dev->dev_addr;
+	mac_addr->addr_type = 6;
+	mac_addr->addr = dev->dev_addr;
+	p->LinkIdentifier.link_addr = (link_addr_t*)mac_addr;
 
-	oldaccessrouter.mac_addr.addr_type = 6;
-	reasoncode = LD_EXPLICIT_DISCONNECT;
+	p->OldAccessRouter.mac_addr.addr_type = 6;
+	p->ReasonCode = LD_EXPLICIT_DISCONNECT;
 
 	/* Notify the local MIHF, if it has subscribed to this event... */
 
-	status = Link_Down_indication(linkidentifier, oldaccessrouter,
-			reasoncode);
+	queue_task(&Link_Down_indication, (void*)p);
 }
 
 void DevLinkGoingDown(struct net_device *dev)
 {
-	link_tuple_id_t linkidentifier;
-	uint16_t timeinterval;
-	link_gd_reason_t linkgoingdownreason;
-	transport_addr_t mac_addr;
-	int status;
+	transport_addr_t *mac_addr = kmalloc(sizeof(*mac_addr), GFP_KERNEL);
+	struct Link_Going_Down_indication_parameter *p =
+			kmalloc(sizeof(*p), GFP_KERNEL);
 
-	linkidentifier.link_id.link_type = ETHERNET; /* WIRELESS_IEEE_802_11 */
-	linkidentifier.link_id.link_addr.mac_addr.addr_type = 6; /* All 802. */
-	linkidentifier.link_id.link_addr.mac_addr.addr = dev->dev_addr;
-	mac_addr.addr_type = 6;
-	mac_addr.addr = dev->dev_addr;
-	linkidentifier.link_addr = (link_addr_t*)&mac_addr;
+	p->LinkIdentifier.link_id.link_type = ETHERNET; /* WIRELESS_IEEE_802_11 */
+	p->LinkIdentifier.link_id.link_addr.mac_addr.addr_type = 6; /* All 802. */
+	p->LinkIdentifier.link_id.link_addr.mac_addr.addr = dev->dev_addr;
+	mac_addr->addr_type = 6;
+	mac_addr->addr = dev->dev_addr;
+	p->LinkIdentifier.link_addr = (link_addr_t*)mac_addr;
 
 	/* How to find out the reason? */
-	linkgoingdownreason = LGD_EXPLICIT_DISCONNECT;
+	p->LinkGoingDownReason = LGD_EXPLICIT_DISCONNECT;
 
 	/*
 	 * timeinterval: time interval (ms) in which the link is expected to
 	 * go down. 0 if unknown.
 	 */
-	timeinterval = 0;
+	p->TimeInterval = 0;
 
 	/* Notify the local MIHF, if it has subscribed to this event... */
 
-	status = Link_Going_Down_indication(linkidentifier, timeinterval,
-			linkgoingdownreason);
+	queue_task(&Link_Going_Down_indication, (void*)p);
 }
+
