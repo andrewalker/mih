@@ -15,7 +15,7 @@ int Mihf(void *data)
 	while (!kthread_should_stop() && !_threads_should_stop) {
 		/* Waits on events notifications: indications, confirms. */
 
-		execute_task();
+		execute_task(&mihf_queue);
 	}
 
 	while (!kthread_should_stop())

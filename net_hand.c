@@ -116,8 +116,8 @@ int NetHandler(void *data)
 		}
 
 		/* Puts socket in queue to be read by MIHF. */
-		if (queue_task(&handle_connection, (void*)new_sock) == 1) {
-			/* Queue's full. */
+		if (queue_task(&mihf_queue, &handle_connection,
+				(void*)new_sock)) {
 			sock_release(new_sock);
 		}
 	}

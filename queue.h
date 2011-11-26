@@ -5,24 +5,25 @@ struct queued_task {
 	struct list_head list;
 };
 
-/* Queue for tasks. */
-struct queued_task task_queue;
-spinlock_t queue_spinlock;
-struct semaphore queue_semaphore;
+struct task_queue {
+	struct queued_task task;
+	struct semaphore sem;
+	spinlock_t lock;
+};
 
-int init_queue(void)
+int init_queue(struct task_queue *queue)
 {
 
 	/* Creates and sets communication structures between threads. */
-	spin_lock_init(&queue_spinlock);
-	sema_init(&queue_semaphore, 0);
+	spin_lock_init(&queue->lock);
+	sema_init(&queue->sem, 0);
 
-	INIT_LIST_HEAD(&task_queue.list);
+	INIT_LIST_HEAD(&queue->task.list);
 
 	return 0;
 }
 
-int queue_task(void (*handler)(void*), void *parameter)
+int queue_task(struct task_queue *queue, void (*handler)(void*), void *parameter)
 {
 	struct queued_task *task = NULL;
 
@@ -31,33 +32,33 @@ int queue_task(void (*handler)(void*), void *parameter)
 	task->task = handler;
 	task->parameter = parameter;
 
-	spin_lock(&queue_spinlock);
-	list_add_tail(&task->list, &task_queue.list);
-	spin_unlock(&queue_spinlock);
+	spin_lock(&queue->lock);
+	list_add_tail(&task->list, &queue->task.list);
+	spin_unlock(&queue->lock);
 
-	up(&queue_semaphore);
+	up(&queue->sem);
 
 	return 0;
 }
 
-int execute_task(void)
+int execute_task(struct task_queue *queue)
 {
 	struct queued_task *task = NULL;
 
-	if (down_killable(&queue_semaphore) < 0)
+	if (down_killable(&queue->sem) < 0)
 		printk(KERN_ERR "Semaphore was interrupted. Fatal?");
 
-	spin_lock(&queue_spinlock);
-	if (!list_empty(&task_queue.list)) {
-		task = list_first_entry(&task_queue.list, struct queued_task,
-				list);
+	spin_lock(&queue->lock);
+	if (!list_empty(&queue->task.list)) {
+		task = list_first_entry(&queue->task.list, struct queued_task,
+			list);
 		list_del(&task->list);
 
 		(*task->task)(task->parameter);
 
 		kfree(task);
 	}
-	spin_unlock(&queue_spinlock);
+	spin_unlock(&queue->lock);
 
 	return 0;
 }

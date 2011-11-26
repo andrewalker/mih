@@ -234,7 +234,7 @@ void DevLinkUp(struct net_device *dev)
 	p->IPRenewalFlag = FALSE; /* How do we know this? */
 	p->MobilityManagementSupport = 0;
 
-	queue_task(&Link_Up_indication, (void*)p);
+	queue_task(&mihf_queue, &Link_Up_indication, (void*)p);
 }
 
 void
@@ -256,7 +256,7 @@ DevLinkDown(struct net_device *dev)
 
 	/* Notify the local MIHF, if it has subscribed to this event... */
 
-	queue_task(&Link_Down_indication, (void*)p);
+	queue_task(&mihf_queue, &Link_Down_indication, (void*)p);
 }
 
 void DevLinkGoingDown(struct net_device *dev)
@@ -283,6 +283,6 @@ void DevLinkGoingDown(struct net_device *dev)
 
 	/* Notify the local MIHF, if it has subscribed to this event... */
 
-	queue_task(&Link_Going_Down_indication, (void*)p);
+	queue_task(&mihf_queue, &Link_Going_Down_indication, (void*)p);
 }
 

@@ -20,6 +20,7 @@
 
 #include "mih.h"		/* Local type definitions for MIH. */
 #include "data.h"		/* Internal data structures for MIH. */
+#include "queue.h"		/* Internal definition of a task queue */
 
 
 #define MODULE_NAME "mih_mod"
@@ -42,7 +43,6 @@ MODULE_PARM_DESC(verbose, "Causes control messages to be sent to "
 
 /* Global variables. */
 
-
 struct task_struct *_net_hand_t = NULL;	/* Kernel thread. */
 struct task_struct *_dev_mon_t = NULL;	/* Kernel thread. */
 struct task_struct *_mihf_t = NULL;	/* Kernel thread. */
@@ -52,8 +52,8 @@ mih_tlv_t _dst_mihf_id;
 
 int _threads_should_stop = 0;
 
+struct task_queue mihf_queue;
 
-#include "queue.h"
 #include "message.c"
 #include "ksock.c"
 #include "mih_sap.c"
@@ -61,7 +61,6 @@ int _threads_should_stop = 0;
 #include "net_hand.c"
 #include "dev_mon.c"
 #include "mihf.c"
-
 
 void kill_net_hand_thread(void);
 
@@ -113,7 +112,7 @@ static int __init mod_Start(void)
 	if (err)
 		return err;
 
-	init_queue();
+	init_queue(&mihf_queue);
 
 	/* Registers routine to watch for changes in the status of devices. */
 	if (register_netdevice_notifier(&mih_netdev_notifier)) {
