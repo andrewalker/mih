@@ -125,31 +125,6 @@ typedef long double u128;
 #define MIH_GET_INFORMATION           1
 #define MIH_PUSH_INFORMATION          2
 
-// MIH Capabilities (p. 249, 250) ...
-#define MIH_LINK_DETECTED_CAP             1 << 0
-#define MIH_LINK_UP_CAP                   1 << 1
-#define MIH_LINK_DOWN_CAP                 1 << 2
-#define MIH_LINK_PARAMETERS_REPORT_CAP    1 << 3
-#define MIH_LINK_GOING_DOWN_CAP           1 << 4
-#define MIH_LINK_HANDOVER_IMMINENT_CAP    1 << 5
-#define MIH_LINK_HANDOVER_COMPLETE_CAP    1 << 6
-#define MIH_LINK_PDU_TRANSMIT_STATUS_CAP  1 << 7
-// Bit 8-31: (Reserved)
-
-// MIH messages for Command Service
-#define MIH_LINK_GET_PARAMETERS_CAP        1 << 0
-#define MIH_LINK_CONFIGURE_THRESHOLDS_CAP  1 << 1
-#define MIH_LINK_ACTIONS_CAP               1 << 2
-#define MIH_NET_HO_CANDIDATE_QUERY_CAP     1 << 3
-#define MIH_NET_HO_COMMIT_CAP              1 << 3
-#define MIH_N2N_HO_QUERY_RESOURCES_CAP     1 << 3
-#define MIH_N2N_HO_COMMIT_CAP              1 << 3
-#define MIH_N2N_HO_COMPLETE_CAP            1 << 3
-#define MIH_MN_HO_CANDIDATE_QUERY_CAP      1 << 4
-#define MIH_MN_HO_COMMIT_CAP               1 << 4
-#define MIH_MN_HO_COMPLETE_CAP             1 << 4
-// Bit 5-31: (Reserved)
-
 // A list of IS query types. Bitmap values:
 #define BINARY_DATA_CAP                    1 << 0
 #define RDF_DATA_CAP                       1 << 1
@@ -810,104 +785,109 @@ typedef enum {
 } mih_sid_t;
 
 
-typedef uint32_t link_event_list_t; // bitmap(32) (229)
-/* A list of link events
-Bit 0: Link_Detected
-Bit 1: Link_Up
-Bit 2: Link_Down
-Bit 3: Link_Parameters_Report
-Bit 4: Link_Going_Down
-Bit 5: Link_Handover_Imminent
-Bit 6: Link_Handover_Complete
-Bit 7: Link_PDU_Transmit_Status
-Bit 8-31: (Reserved)
-*/
-typedef uint32_t link_cmd_list_t; // bitmap(32) (227)
-/* A list of link commands
-Bit 0: Reserved
-Bit 1: Link_Event_Subscribe
-Bit 2: Link_Event_Unsubscribe
-Bit 3: Link_Get_Parameters
-Bit 4: Link_Configure_Thresholds
-Bit 5: Link_Action
-Bit 6-31: (Reserved)
-*/
+typedef struct {
+	uint32_t
+		Link_Detected			: 1,
+		Link_Up				: 1,
+		Link_Down			: 1,
+		Link_Parameters_Report		: 1,
+		Link_Going_Down			: 1,
+		Link_Handover_Imminent		: 1,
+		Link_Handover_Complete		: 1,
+		Link_PDU_Transmit_Status	: 1,
+		Reserved			: 24;
+	struct list_head list;
+} link_event_list_t;
 
-typedef uint32_t mih_evt_list_t; // bitmap(32) (250)
-/*
-Bit 0: MIH_Link_Detected
-Bit 1: MIH_Link_Up
-Bit 2: MIH_Link_Down
-Bit 3: MIH_Link_Parameters_Report
-Bit 4: MIH_Link_Going_Down
-Bit 5: MIH_Link_Handover_Imminent
-Bit 6: MIH_Link_Handover_Complete
-Bit 7: MIH_Link_PDU_Transmit_Status
-Bit 8-31: (Reserved)
-*/
+typedef struct {
+	uint32_t
+		Reserved			: 1,
+		Link_Event_Subscribe		: 1,
+		Link_Event_Unsubscribe		: 1,
+		Link_Get_Parameters		: 1,
+		Link_Configure_Thresholds	: 1,
+		Link_Action			: 1,
+		Reserved2			: 26;
+	struct list_head list;
+} link_cmd_list_t;
 
-typedef uint32_t mih_cmd_list_t; // bitmap(32) (249)
-/*
-Bit 0: MIH_Link_Get_Parameters
-Bit 1: MIH_Link_Configure_Thresholds_
-Bit 2: MIH_Link_Actions
-Bit 3: MIH_Net_HO_Candidate_Query
-       MIH_Net_HO_Commit
-       MIH_N2N_HO_Query_Resources
-       MIH_N2N_HO_Commit
-       MIH_N2N_HO_Complete
-Bit 4: MIH_MN_HO_Candidate_Query
-       MIH_MN_HO_Commit
-       MIH_MN_HO_Complete
-Bit 5-31: (Reserved)
-*/
+typedef struct {
+	uint32_t
+		MIH_Link_Detected		: 1,
+		MIH_Link_Up			: 1,
+		MIH_Link_Down			: 1,
+		MIH_Link_Parameters_Report	: 1,
+		MIH_Link_Going_Down		: 1,
+		MIH_Link_Handover_Imminent	: 1,
+		MIH_Link_Handover_Complete	: 1,
+		MIH_Link_PDU_Transmit_Status	: 1,
+		Reserved			: 24;
+	struct list_head list;
+} mih_evt_list_t;
 
-typedef uint64_t mih_iq_type_lst_t;	// bitmap(64) (250)
-/* A list of IS query types. Bitmap values:
-Bit 0: Binary data
-Bit 1: RDF data
-Bit 2: RDF schema URL
-Bit 3: RDF schema
-Bit 4: IE_NETWORK_TYPE
-Bit 5: IE_OPERATOR_ID
-Bit 6: IE_SERVICE_PROVIDER_ID
-Bit 7: IE_COUNTRY_CODE
-Bit 8: IE_NETWORK_ID
-Bit 9: IE_NEWORK_AUX_ID
-Bit 10: IE_ROAMING_PARTNERS
-Bit 11: IE_COST
-Bit 12: IE_NETWORK_QOS
-Bit 13: IE_NETWORK_DATE_RATE
-Bit 14: IE_NET_REGULT_DOMAIN
-Bit 15: IE_NET_FREQUENCY_BANDS
-Bit 16: IE_NET_IP_CFG_METHODS
-Bit 17: IE_NET_CAPABILITIES
-Bit 18: IE_NET_SUPPORTED_LCP
-Bit 19: IE_NET_MOB_MGMT_PROT
-Bit 20: IE_NET_EMSERV_PROXY
-Bit 21: IE_NET_IMS_PROXY_CSCF
-Bit 22: IE_NET_MOBILE_NETWORK
-Bit 23: IE_POA_LINK_ADDR
-Bit 24: IE_POA_LOCATION
-Bit 25: IE_POA_CHANNEL_RANGE
-Bit 26: IE_POA_SYSTEM_INFO
-Bit 27: IE_POA_SUBNET_INFO
-Bit 28: IE_POA_IP_ADDR
-Bits 29-63: (Reserved)
-*/
+typedef struct {
+	uint32_t
+		MIH_Link_Get_Parameters		: 1,
+		MIH_Link_Configure_Thresholds	: 1,
+		MIH_Link_Actions		: 1,
+		MIH_Net_HO_Candidate_Query	: 1,
+		/* Or is it:
+                 * MIH_Net_HO_Commit
+                 * MIH_N2N_HO_Query_Resources
+                 * MIH_N2N_HO_Commit
+                 * MIH_N2N_HO_Complete
+                 */
+		MIH_MN_HO_Candidate_Query	: 1,
+		/* Or is it:
+		 * MIH_MN_HO_Commit
+		 * MIH_MN_HO_Complete
+		 */
+		Reserved			: 25;
+	struct list_head list;
+} mih_cmd_list_t;
 
-// A list of supported transports.
-#define UDP_CAP                            1 << 0
-#define TCP_CAP                            1 << 1
-// Bit 2-15: (Reserved)
+typedef struct {
+	uint64_t
+		Binary_Data			: 1,
+		RDF_Data			: 1,
+		RDF_Schema_URL			: 1,
+		RDF_Schema			: 1,
+		IE_Network_Type			: 1,
+		IE_Operator_ID			: 1,
+		IE_Service_Provider_ID		: 1,
+		IE_Country_Code			: 1,
+		IE_Network_ID			: 1,
+		IE_Nework_Aux_ID		: 1,
+		IE_Roaming_Partners		: 1,
+		IE_Cost				: 1,
+		IE_Network_QoS			: 1,
+		IE_Network_Date_Rate		: 1,
+		IE_Net_Regult_Domain		: 1,
+		IE_Net_Frequency_bands		: 1,
+		IE_Net_IP_Cfg_Methods		: 1,
+		IE_Net_Capabilities		: 1,
+		IE_Net_Supported_LCP		: 1,
+		IE_Net_Mob_Mgmt_Prot		: 1,
+		IE_Net_Emserv_Proxy		: 1,
+		IE_Net_IMS_Proxy_CSCF		: 1,
+		IE_Net_Mobile_Network		: 1,
+		IE_PoA_Link_Addr		: 1,
+		IE_PoA_Location			: 1,
+		IE_PoA_Channel_Range		: 1,
+		IE_PoA_System_Info		: 1,
+		IE_PoA_Subnet_Info		: 1,
+		IE_PoA_IP_Addr			: 1,
+		Reserved			: 1;
+	struct list_head list;
+} mih_iq_type_lst_t;
 
-typedef uint16_t mih_trans_lst_t; // bitmap(16) (251)
-/* A list of supported transports.
-Bitmap Values:
-Bit 0: UDP
-Bit 1: TCP
-Bit 2-15: (Reserved)
-*/
+typedef struct {
+	uint16_t
+		UDP				: 1,
+		TCP				: 1,
+		Reserved			: 14;
+	struct list_head list;
+} mih_trans_lst_t;
 
 typedef unsigned char reg_request_code_t;	// enumerated // unsigned_int(1)
 // The registration code: 0-Registration, 1-Re-Registration
@@ -1005,13 +985,14 @@ typedef struct {
 	link_addr_t *link_addr;
 } link_tuple_id_t;
 
-typedef unsigned char link_mihcap_flag_t;	// bitmap(8) (229)
-/* Represents if MIH capability is supported or not
-Bit 1: event service (ES) supported
-Bit 2: command service (CS) supported
-Bit 3: Information service (IS) supported
-Bit 0, 4-7: (Reserved)
-*/
+typedef struct {
+	unsigned char
+		Reserved			: 1,
+		Event_Service			: 1,
+		Command_Service			: 1,
+		Information_Service		: 1,
+		Reserved2			: 4;
+} link_mihcap_flag_t;
 
 typedef struct { 	// (249)
 	link_tuple_id_t     link_tuple_id;

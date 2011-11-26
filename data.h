@@ -47,69 +47,72 @@ boolean_t _startackresponder = 0; /* FALSE */
 /* capabilities supported (F.20 / pp 249) */
 
 /* list of events services supported */
-mih_evt_list_t     _evt_list = 0 \
-	| MIH_LINK_DETECTED_CAP \
-	| MIH_LINK_UP_CAP \
-	| MIH_LINK_DOWN_CAP \
-	| MIH_LINK_PARAMETERS_REPORT_CAP \
-	| MIH_LINK_GOING_DOWN_CAP \
-	| MIH_LINK_HANDOVER_IMMINENT_CAP \
-	| MIH_LINK_HANDOVER_COMPLETE_CAP \
-	| MIH_LINK_PDU_TRANSMIT_STATUS_CAP \
-	;
+mih_evt_list_t _evt_list = {
+	.MIH_Link_Detected		= 1,
+	.MIH_Link_Up			= 1,
+	.MIH_Link_Down			= 1,
+	.MIH_Link_Parameters_Report	= 1,
+	.MIH_Link_Going_Down		= 1,
+	.MIH_Link_Handover_Imminent	= 1,
+	.MIH_Link_Handover_Complete	= 1,
+	.MIH_Link_PDU_Transmit_Status	= 1
+};
 
 /* list of commands services supported */
-mih_cmd_list_t     _cmd_list = 0 \
-	| MIH_LINK_GET_PARAMETERS_CAP \
-	| MIH_LINK_CONFIGURE_THRESHOLDS_CAP \
-	| MIH_LINK_ACTIONS_CAP \
-	| MIH_NET_HO_CANDIDATE_QUERY_CAP \
-	| MIH_NET_HO_COMMIT_CAP \
-	| MIH_N2N_HO_QUERY_RESOURCES_CAP \
-	| MIH_N2N_HO_COMMIT_CAP \
-	| MIH_N2N_HO_COMPLETE_CAP \
-	| MIH_MN_HO_CANDIDATE_QUERY_CAP \
-	| MIH_MN_HO_COMMIT_CAP \
-	| MIH_MN_HO_COMPLETE_CAP \
-	;
+mih_cmd_list_t _cmd_list = {
+	.MIH_Link_Get_Parameters	= 1,
+	.MIH_Link_Configure_Thresholds	= 1,
+	.MIH_Link_Actions		= 1,
+	.MIH_Net_HO_Candidate_Query	= 1,
+	/* .MIH_Net_HO_Commit		= 1,
+	 * .MIH_N2N_HO_Query_Resources	= 1,
+	 * .MIH_N2N_HO_Commit		= 1,
+	 * .MIH_N2N_HO_Complete		= 1,
+	 */
+	.MIH_MN_HO_Candidate_Query	= 1,
+	/* .MIH_MN_HO_Commit		= 1,
+	 * .MIH_MN_HO_Complete		= 1
+	 */
+};
 
 /* list of information services supported */
-mih_iq_type_lst_t  _iq_type_lst = 0;
-/*
-	| BINARY_DATA_CAP \
-	| RDF_DATA_CAP \
-	| RDF_SCHEMA URL_CAP \
-	| RDF_SCHEMA_CAP \
-	| IE_NETWORK_TYPE_CAP \
-	| IE_OPERATOR_ID_CAP \
-	| IE_SERVICE_PROVIDER_ID_CAP \
-	| IE_COUNTRY_CODE_CAP \
-	| IE_NETWORK_ID_CAP \
-	| IE_NEWORK_AUX_ID_CAP \
-	| IE_ROAMING_PARTNERS_CAP \
-	| IE_COST_CAP \
-	| IE_NETWORK_QOS_CAP \
-	| IE_NETWORK_DATE_RATE_CAP \
-	| IE_NET_REGULT_DOMAIN_CAP \
-	| IE_NET_FREQUENCY_BANDS_CAP \
-	| IE_NET_IP_CFG_METHODS_CAP \
-	| IE_NET_CAPABILITIES_CAP \
-	| IE_NET_SUPPORTED_LCP_CAP \
-	| IE_NET_MOB_MGMT_PROT_CAP \
-	| IE_NET_EMSERV_PROXY_CAP \
-	| IE_NET_IMS_PROXY_CSCF_CAP \
-	| IE_NET_MOBILE_NETWORK_CAP \
-	| IE_POA_LINK_ADDR_CAP \
-	| IE_POA_LOCATION_CAP \
-	| IE_POA_CHANNEL_RANGE_CAP \
-	| IE_POA_SYSTEM_INFO_CAP \
-	| IE_POA_SUBNET_INFO_CAP \
-	| IE_POA_IP_ADDR_CAP \
-	;
-*/
+mih_iq_type_lst_t _iq_type_lst = {
+	.Binary_Data			= 0,
+	.RDF_Data			= 0,
+	.RDF_Schema_URL			= 0,
+	.RDF_Schema			= 0,
+	.IE_Network_Type			= 0,
+	.IE_Operator_ID			= 0,
+	.IE_Service_Provider_ID		= 0,
+	.IE_Country_Code			= 0,
+	.IE_Network_ID			= 0,
+	.IE_Nework_Aux_ID		= 0,
+	.IE_Roaming_Partners		= 0,
+	.IE_Cost				= 0,
+	.IE_Network_QoS			= 0,
+	.IE_Network_Date_Rate		= 0,
+	.IE_Net_Regult_Domain		= 0,
+	.IE_Net_Frequency_bands		= 0,
+	.IE_Net_IP_Cfg_Methods		= 0,
+	.IE_Net_Capabilities		= 0,
+	.IE_Net_Supported_LCP		= 0,
+	.IE_Net_Mob_Mgmt_Prot		= 0,
+	.IE_Net_Emserv_Proxy		= 0,
+	.IE_Net_IMS_Proxy_CSCF		= 0,
+	.IE_Net_Mobile_Network		= 0,
+	.IE_PoA_Link_Addr		= 0,
+	.IE_PoA_Location			= 0,
+	.IE_PoA_Channel_Range		= 0,
+	.IE_PoA_System_Info		= 0,
+	.IE_PoA_Subnet_Info		= 0,
+	.IE_PoA_IP_Addr			= 0
+};
 
 /* list of supported transports */
-mih_trans_lst_t  _trans_lst = UDP_CAP | TCP_CAP;
+mih_trans_lst_t _trans_lst = {
+	.UDP				= 0,
+	.TCP				= 1
+};
 
 /* (249) */
 /* link_det_cfg */
