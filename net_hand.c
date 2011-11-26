@@ -21,15 +21,12 @@ static int SockInit(void)
 	struct sockaddr_in rxaddr;
 
 	/* The inbound address. */
-	DBG("Entering SockInit");
-	DBG("Initializing sockaddr");
 	memset(&rxaddr, 0, sizeof(rxaddr));
 	rxaddr.sin_family = AF_INET;
 	rxaddr.sin_port = htons(MIHF_PORT);
 	rxaddr.sin_addr.s_addr = htonl(INADDR_ANY);
 
 	/* The inbound TCP socket. */
-	DBG("Creating socket");
 	s = sock_create(PF_INET, SOCK_STREAM, IPPROTO_TCP, &_insock);
 	if (s < 0) {
 		printk(KERN_ERR "MIH NetHand: error %d creating input socket\n",
@@ -37,7 +34,6 @@ static int SockInit(void)
 		return -1;
 	}
 
-	DBG("Configuring socket");
 	opt = 1;
 	s = kernel_setsockopt(_insock, IPPROTO_TCP, TCP_NODELAY, (char *)&opt,
 			sizeof(opt));
@@ -51,7 +47,6 @@ static int SockInit(void)
 		printk(KERN_ERR "MIH NetHand: error %d setting socket option\n",
 				s);
 	}
-	DBG("Binding socket");
 	s = _insock->ops->bind(_insock, (struct sockaddr *)&rxaddr,
 			sizeof(rxaddr));
 	if (s < 0) {
@@ -59,7 +54,6 @@ static int SockInit(void)
 				"socket\n", s);
 		goto err;
 	}
-	DBG("Start listening in the socket");
 	s = _insock->ops->listen(_insock, 3);
 	if (s < 0) {
 		printk(KERN_ERR "MIH NetHand: error %d in listening for input "
@@ -69,14 +63,11 @@ static int SockInit(void)
 
 	/* Should we also use UDP? */
 
-	DBG("Exiting SockInit");
 	return 0;
 
 err:
-	DBG("Error occured, releasing socket");
 	sock_release(_insock);
 
-	DBG("Exiting SockInit");
 	return -1;
 }
 
@@ -84,12 +75,10 @@ err:
 void handle_connection(void *parameter)
 {
 	struct socket *sock = (struct socket*)parameter;
-	DBG("Entering handle_connection");
 
 	/* Decides on starting a handover. */
 
 	/* Process the socket and releases it. */
-	DBG("Releasing socket");
 	if (sock)
 		sock_release(sock);
 }
@@ -102,18 +91,14 @@ int NetHandler(void *data)
 	struct iovec iov;
 	struct inet_sock *inet;
 
-	DBG("Entering NetHandler");
 	/* Should we do the network initializations here? */
 	if (SockInit() < 0) {
 		printk(KERN_INFO "MIH NetHand: fail creating socket\n");
 		return -1;
 	}
 
-	DBG("Entering net handler loop");
 	/* Waits for messages from the network. */
 	while (!kthread_should_stop() && !_threads_should_stop) {
-		DBG("Loop iteration");
-		DBG("Creating socket");
 		if (sock_create(PF_INET, SOCK_STREAM, IPPROTO_TCP, &new_sock)
 				== -1) {
 			printk(KERN_INFO "MIH NetHand: error creating data "
@@ -124,7 +109,6 @@ int NetHandler(void *data)
 		new_sock->type = _insock->type;
 		new_sock->ops = _insock->ops;
 
-		DBG("Blocking until a connection is accepted");
 		if (_insock->ops->accept(_insock, new_sock, 0) < 0) {
 			printk(KERN_INFO "MIH NetHand: error accepting "
 					"connection on data socket\n");
@@ -134,20 +118,15 @@ int NetHandler(void *data)
 		/* Puts socket in queue to be read by MIHF. */
 		if (queue_task(&handle_connection, (void*)new_sock) == 1) {
 			/* Queue's full. */
-			DBG("Queue is full, releasing socket");
 			sock_release(new_sock);
 		}
 	}
 
-	DBG("Exited net handler loop");
-	DBG("Releasing socket");
 	sock_release(_insock);
 
-	DBG("Waiting for proper termination signal");
 	while (!kthread_should_stop())
 		msleep(1);
 
-	DBG("Exiting NetHandler");
 	return 0;
 }
 
