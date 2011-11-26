@@ -1,17 +1,12 @@
-#define _QUEUE_SIZE_ 16
-
 /* Structure to represent a queued task */
 struct queued_task {
 	void (*task)(void *parameter);
 	void *parameter;
+	struct list_head list;
 };
 
 /* Queue for tasks. */
-struct queued_task *task_queue[_QUEUE_SIZE_] = {NULL};
-int queue_in = 0; /* Point of entrance in the queue. */
-int queue_out = 0; /* Point of withdrawal from the queue. */
-
-int queued_tasks = 0;
+struct queued_task task_queue;
 spinlock_t queue_spinlock;
 struct semaphore queue_semaphore;
 
@@ -25,6 +20,9 @@ int init_queue(void)
 	DBG("Initializing semaphore");
 	sema_init(&queue_semaphore, 0);
 
+	DBG("Initializing queue");
+	INIT_LIST_HEAD(&task_queue.list);
+
 	DBG("Exiting init_queue");
 	return 0;
 }
@@ -34,16 +32,6 @@ int queue_task(void (*handler)(void*), void *parameter)
 	struct queued_task *task = NULL;
 
 	DBG("Entering queue_task");
-	DBG("Acquiring lock");
-	spin_lock(&queue_spinlock);
-
-	if (queued_tasks == _QUEUE_SIZE_) {
-		DBG("Queue is full, releasing lock");
-		spin_unlock(&queue_spinlock);
-		DBG("Exiting queue_task");
-		return 1;
-	}
-
 	DBG("Allocating task structure");
 	task = (struct queued_task*)kmalloc(sizeof(*task), GFP_KERNEL);
 
@@ -51,14 +39,13 @@ int queue_task(void (*handler)(void*), void *parameter)
 	task->task = handler;
 	task->parameter = parameter;
 
+	DBG("Acquiring lock");
+	spin_lock(&queue_spinlock);
 	DBG("Placing task in the queue");
-	task_queue[queue_in] = task;
-	queue_in++;
-	queue_in %= _QUEUE_SIZE_;
-	queued_tasks++;
-
+	list_add_tail(&task->list, &task_queue.list);
 	DBG("Releasing lock");
 	spin_unlock(&queue_spinlock);
+
 	DBG("Notifying the semaphore");
 	up(&queue_semaphore);
 
@@ -77,26 +64,19 @@ int execute_task(void)
 
 	DBG("Acquiring lock");
 	spin_lock(&queue_spinlock);
+	if (!list_empty(&task_queue.list)) {
+		DBG("Retrieving task from queue");
+		task = list_first_entry(&task_queue.list, struct queued_task,
+				list);
+		DBG("Removing task from queue");
+		list_del(&task->list);
 
-	if (!queued_tasks) {
-		DBG("Queue's empty, releasing lock");
-		spin_unlock(&queue_spinlock);
-		DBG("Exiting execute_task");
-		return 1;
+		DBG("Executing task");
+		(*task->task)(task->parameter);
+
+		DBG("Freeing task structure");
+		kfree(task);
 	}
-
-	DBG("Retrieving task from queue");
-	task = task_queue[queue_out];
-	queue_out++;
-	queue_out %= _QUEUE_SIZE_;
-	queued_tasks--;
-
-	DBG("Executing task");
-	(*task->task)(task->parameter);
-
-	DBG("Freeing task structure");
-	kfree(task);
-
 	DBG("Releasing lock");
 	spin_unlock(&queue_spinlock);
 
