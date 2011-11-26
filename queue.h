@@ -23,7 +23,8 @@ int init_queue(struct task_queue *queue)
 	return 0;
 }
 
-int queue_task(struct task_queue *queue, void (*handler)(void*), void *parameter)
+int queue_task(struct task_queue *queue, void (*handler)(void*),
+		void *parameter)
 {
 	struct queued_task *task = NULL;
 
@@ -51,7 +52,7 @@ int execute_task(struct task_queue *queue)
 	spin_lock(&queue->lock);
 	if (!list_empty(&queue->task.list)) {
 		task = list_first_entry(&queue->task.list, struct queued_task,
-			list);
+				list);
 		list_del(&task->list);
 
 		(*task->task)(task->parameter);
