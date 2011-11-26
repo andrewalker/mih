@@ -24,9 +24,9 @@
 
 /* Events */
 
-void Link_Up_indication(void *parameter);
-void Link_Down_indication(void *parameter);
-void Link_Going_Down_indication(void *parameter);
+void Link_Up_indication(struct kthread_work *work);
+void Link_Down_indication(struct kthread_work *work);
+void Link_Going_Down_indication(struct kthread_work *work);
 
 int Link_Detected_indication(link_det_info_t LinkDetectedInfo);
 
@@ -52,7 +52,10 @@ int Link_PDU_Transmit_Status_indication(
 	uint16_t		PacketIdentifier,
 	boolean_t		TransmissionStatus);
 
-struct Link_Up_indication_parameter {
+struct Link_Up_indication_work {
+	struct list_head	finished;
+	struct kthread_work	work;
+
 	link_tuple_id_t		LinkIdentifier;
 	link_addr_t		OldAccessRouter;
 	link_addr_t		NewAccessRouter;
@@ -60,14 +63,20 @@ struct Link_Up_indication_parameter {
 	ip_mob_mgmt_t		MobilityManagementSupport;
 };
 
-struct Link_Down_indication_parameter {
+struct Link_Down_indication_work {
+	struct list_head	finished;
+	struct kthread_work	work;
+
 	link_tuple_id_t		LinkIdentifier;
 	link_addr_t		OldAccessRouter;
 	link_dn_reason_t	ReasonCode;
 };
 
 
-struct Link_Going_Down_indication_parameter {
+struct Link_Going_Down_indication_work {
+	struct list_head	finished;
+	struct kthread_work	work;
+
 	link_tuple_id_t		LinkIdentifier;
 	uint16_t		TimeInterval;
 	link_gd_reason_t	LinkGoingDownReason;

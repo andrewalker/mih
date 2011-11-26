@@ -72,20 +72,34 @@ err:
 }
 
 
-void handle_connection(void *parameter)
+struct handle_connection_work {
+	struct list_head finished;
+	struct kthread_work work;
+
+	struct socket *sock;
+} last_handle_connection_work;
+
+void handle_connection(struct kthread_work *work)
 {
-	struct socket *sock = (struct socket*)parameter;
+	struct handle_connection_work *param = container_of(work,
+			struct handle_connection_work, work);
+	struct socket *sock = param->sock;
+
+	free_previous_work(&mihf_finished_work_list);
 
 	/* Decides on starting a handover. */
 
 	/* Process the socket and releases it. */
 	if (sock)
 		sock_release(sock);
+
+	list_add(&param->finished, &mihf_finished_work_list);
 }
 
 int NetHandler(void *data)
 {
 	struct socket *new_sock = NULL;
+	struct handle_connection_work *work = NULL;
 	int len = 0;
 	struct msghdr msg;
 	struct iovec iov;
@@ -115,11 +129,13 @@ int NetHandler(void *data)
 			continue;
 		}
 
+		work = kmalloc(sizeof(*work), GFP_KERNEL);
+		work->sock = new_sock;
+		init_kthread_work(&work->work, handle_connection);
+		INIT_LIST_HEAD(&work->finished);
+
 		/* Puts socket in queue to be read by MIHF. */
-		if (queue_task(&mihf_queue, &handle_connection,
-				(void*)new_sock)) {
-			sock_release(new_sock);
-		}
+		queue_kthread_work(&_mihf_w, &work->work);
 	}
 
 	sock_release(_insock);

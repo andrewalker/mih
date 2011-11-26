@@ -20,7 +20,6 @@
 
 #include "mih.h"		/* Local type definitions for MIH. */
 #include "data.h"		/* Internal data structures for MIH. */
-#include "queue.h"		/* Internal definition of a task queue */
 
 
 #define MODULE_NAME "mih_mod"
@@ -47,12 +46,27 @@ struct task_struct *_net_hand_t = NULL;	/* Kernel thread. */
 struct task_struct *_dev_mon_t = NULL;	/* Kernel thread. */
 struct task_struct *_mihf_t = NULL;	/* Kernel thread. */
 
+struct kthread_worker _mihf_w;		/* Kernel worker. */
+
+struct list_head mihf_finished_work_list;
+
 mih_tlv_t _src_mihf_id;
 mih_tlv_t _dst_mihf_id;
 
 int _threads_should_stop = 0;
 
-struct task_queue mihf_queue;
+/* Global functions. */
+
+void free_previous_work(struct list_head *finished_list)
+{
+	void *finished_work = NULL;
+
+	while (!list_empty(finished_list)) {
+		finished_work = finished_list->next;
+		list_del(finished_work);
+		kfree(finished_work);
+	}
+}
 
 #include "message.c"
 #include "ksock.c"
@@ -60,7 +74,6 @@ struct task_queue mihf_queue;
 #include "mih_link_sap.c"
 #include "net_hand.c"
 #include "dev_mon.c"
-#include "mihf.c"
 
 void kill_net_hand_thread(void);
 
@@ -112,7 +125,9 @@ static int __init mod_Start(void)
 	if (err)
 		return err;
 
-	init_queue(&mihf_queue);
+	INIT_LIST_HEAD(&mihf_finished_work_list);
+
+	init_kthread_worker(&_mihf_w);
 
 	/* Registers routine to watch for changes in the status of devices. */
 	if (register_netdevice_notifier(&mih_netdev_notifier)) {
@@ -131,7 +146,8 @@ static int __init mod_Start(void)
 		goto kthread_failure;
 	if ((_dev_mon_t = kthread_run(DevMon, NULL, MODULE_NAME)) == NULL)
 		goto kthread_failure;
-	if ((_mihf_t = kthread_run(Mihf, NULL, MODULE_NAME)) == NULL)
+	if ((_mihf_t = kthread_run(kthread_worker_fn, &_mihf_w, MODULE_NAME))
+			== NULL)
 		goto kthread_failure;
 
 	/*
