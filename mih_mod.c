@@ -45,10 +45,13 @@ MODULE_PARM_DESC(verbose, "Causes control messages to be sent to "
 struct task_struct *_net_hand_t = NULL;	/* Kernel thread. */
 struct task_struct *_dev_mon_t = NULL;	/* Kernel thread. */
 struct task_struct *_mihf_t = NULL;	/* Kernel thread. */
+struct task_struct *_dispatch_t = NULL;	/* Kernel thread. */
 
 struct kthread_worker _mihf_w;		/* Kernel worker. */
+struct kthread_worker _dispatch_w;	/* Kernel worker. */
 
 struct list_head mihf_finished_work_list;
+struct list_head dispatch_finished_work_list;
 
 mih_tlv_t _src_mihf_id;
 mih_tlv_t _dst_mihf_id;
@@ -126,8 +129,10 @@ static int __init mod_Start(void)
 		return err;
 
 	INIT_LIST_HEAD(&mihf_finished_work_list);
+	INIT_LIST_HEAD(&dispatch_finished_work_list);
 
 	init_kthread_worker(&_mihf_w);
+	init_kthread_worker(&_dispatch_w);
 
 	/* Registers routine to watch for changes in the status of devices. */
 	if (register_netdevice_notifier(&mih_netdev_notifier)) {
@@ -149,6 +154,9 @@ static int __init mod_Start(void)
 	if ((_mihf_t = kthread_run(kthread_worker_fn, &_mihf_w, MODULE_NAME))
 			== NULL)
 		goto kthread_failure;
+	if ((_dispatch_t = kthread_run(kthread_worker_fn, &_dispatch_w,
+			MODULE_NAME)) == NULL)
+		goto kthread_failure;
 
 	/*
 	 * How to avoid a failure in the creation of a thread to damage
@@ -168,6 +176,8 @@ kthread_failure:
 		kthread_stop(_dev_mon_t);
 	if (_mihf_t)
 		kthread_stop(_mihf_t);
+	if (_dispatch_t)
+		kthread_stop(_dispatch_t);
 
 	return err;
 }
@@ -209,12 +219,12 @@ static void __exit mod_End(void)
 
 	/* Stop kernel threads. */
 	kill_net_hand_thread();
-	if (_dev_mon_t) {
+	if (_dev_mon_t)
 		kthread_stop(_dev_mon_t);
-	}
-	if (_mihf_t) {
+	if (_mihf_t)
 		kthread_stop(_mihf_t);
-	}
+	if (_dispatch_t)
+		kthread_stop(_dispatch_t);
 
 	/* Unregisters routine. */
 	unregister_netdevice_notifier(&mih_netdev_notifier);
