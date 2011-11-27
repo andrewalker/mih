@@ -226,6 +226,10 @@ static void __exit mod_End(void)
 	if (_dispatch_t)
 		kthread_stop(_dispatch_t);
 
+	/* Free finished work tasks */
+	free_previous_work(&mihf_finished_work_list);
+	free_previous_work(&dispatch_finished_work_list);
+
 	/* Unregisters routine. */
 	unregister_netdevice_notifier(&mih_netdev_notifier);
 	unregister_inetaddr_notifier(&mih_inaddr_notifier);
