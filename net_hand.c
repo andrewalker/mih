@@ -86,10 +86,6 @@ void handle_connection(void *parameter)
 int NetHandler(void *data)
 {
 	struct socket *new_sock = NULL;
-	int len = 0;
-	struct msghdr msg;
-	struct iovec iov;
-	struct inet_sock *inet;
 
 	/* Should we do the network initializations here? */
 	if (SockInit() < 0) {

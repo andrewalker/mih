@@ -42,9 +42,15 @@ int queue_task(struct task_queue *queue, void (*handler)(void*),
 	return 0;
 }
 
+void poison_task(void *parameter)
+{
+	// Only the function address is used.
+}
+
 int execute_task(struct task_queue *queue)
 {
 	struct queued_task *task = NULL;
+	int result = 1;
 
 	if (down_killable(&queue->sem) < 0)
 		printk(KERN_ERR "Semaphore was interrupted. Fatal?");
@@ -55,11 +61,33 @@ int execute_task(struct task_queue *queue)
 				list);
 		list_del(&task->list);
 
-		(*task->task)(task->parameter);
+		if (task->task == &poison_task)
+			result = 0;
+		else
+			(*task->task)(task->parameter);
 
 		kfree(task);
 	}
 	spin_unlock(&queue->lock);
 
+	return result;
+}
+
+int task_executor(void *data)
+{
+	struct task_queue *queue = (struct task_queue*)data;
+
+	while (execute_task(queue));
+
+	while (!kthread_should_stop())
+		msleep(1);
+
 	return 0;
 }
+
+void stop_executor(struct task_queue *queue, struct task_struct *thread)
+{
+	queue_task(queue, &poison_task, NULL);
+	kthread_stop(thread);
+}
+

@@ -54,6 +54,7 @@ mih_tlv_t _dst_mihf_id;
 int _threads_should_stop = 0;
 
 struct task_queue mihf_queue;
+struct task_queue dispatch_queue;
 
 #include "message.c"
 #include "ksock.c"
@@ -114,6 +115,7 @@ static int __init mod_Start(void)
 		return err;
 
 	init_queue(&mihf_queue);
+	init_queue(&dispatch_queue);
 
 	/* Registers routine to watch for changes in the status of devices. */
 	if (register_netdevice_notifier(&mih_netdev_notifier)) {
@@ -132,9 +134,10 @@ static int __init mod_Start(void)
 		goto kthread_failure;
 	if ((_dev_mon_t = kthread_run(DevMon, NULL, MODULE_NAME)) == NULL)
 		goto kthread_failure;
-	if ((_mihf_t = kthread_run(Mihf, NULL, MODULE_NAME)) == NULL)
+	if ((_mihf_t = kthread_run(task_executor, (void*)&mihf_queue,
+			MODULE_NAME)) == NULL)
 		goto kthread_failure;
-	if ((_dispatch_t = kthread_run(kthread_worker_fn, &_dispatch_w,
+	if ((_dispatch_t = kthread_run(task_executor, (void*)&dispatch_queue,
 			MODULE_NAME)) == NULL)
 		goto kthread_failure;
 
@@ -155,9 +158,9 @@ kthread_failure:
 	if (_dev_mon_t)
 		kthread_stop(_dev_mon_t);
 	if (_mihf_t)
-		kthread_stop(_mihf_t);
+		stop_executor(&mihf_queue, _mihf_t);
 	if (_dispatch_t)
-		kthread_stop(_dispatch_t);
+		stop_executor(&dispatch_queue, _dispatch_t);
 
 	return err;
 }
@@ -202,13 +205,9 @@ static void __exit mod_End(void)
 	if (_dev_mon_t)
 		kthread_stop(_dev_mon_t);
 	if (_mihf_t)
-		kthread_stop(_mihf_t);
+		stop_executor(&mihf_queue, _mihf_t);
 	if (_dispatch_t)
-		kthread_stop(_dispatch_t);
-
-	/* Free finished work tasks */
-	free_previous_work(&mihf_finished_work_list);
-	free_previous_work(&dispatch_finished_work_list);
+		stop_executor(&dispatch_queue, _dispatch_t);
 
 	/* Unregisters routine. */
 	unregister_netdevice_notifier(&mih_netdev_notifier);
