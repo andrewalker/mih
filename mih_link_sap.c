@@ -36,33 +36,29 @@ Link_Detected_indication(link_det_info_t LinkDetectedInfo)
 }
 
 // (63)
-void Link_Up_indication(struct kthread_work *work)
+void Link_Up_indication(void *parameter)
 {
-	struct Link_Up_indication_work *param = container_of(work,
-			struct Link_Up_indication_work, work);
-
-	free_previous_work(&mihf_finished_work_list);
-
+	struct Link_Up_indication_parameter *p =
+			(struct Link_Up_indication_parameter*)parameter;
 	// notify local & remote subscribers
 
 	printk(KERN_INFO "MIH: mih_link_sap Link_Up.indication\n");
 
-	list_add(&param->finished, &mihf_finished_work_list);
+	kfree(p->LinkIdentifier.link_addr);
+	kfree(p);
 }
 
 // (64)
-void Link_Down_indication(struct kthread_work *work)
+void Link_Down_indication(void *parameter)
 {
-	struct Link_Down_indication_work *param = container_of(work,
-			struct Link_Down_indication_work, work);
-
-	free_previous_work(&mihf_finished_work_list);
-
+	struct Link_Down_indication_parameter *p =
+			(struct Link_Down_indication_parameter*)parameter;
 	// notify local & remote subscribers
 
 	printk(KERN_INFO "MIH: mih_link_sap Link_Down.indication\n");
 
-	list_add(&param->finished, &mihf_finished_work_list);
+	kfree(p->LinkIdentifier.link_addr);
+	kfree(p);
 }
 
 // (65)
@@ -80,18 +76,16 @@ Link_Parameters_Report_indication(
 }
 
 // (66)
-void Link_Going_Down_indication(struct kthread_work *work)
+void Link_Going_Down_indication(void *parameter)
 {
-	struct Link_Going_Down_indication_work *param = container_of(work,
-			struct Link_Going_Down_indication_work, work);
-
-	free_previous_work(&mihf_finished_work_list);
-
+	struct Link_Going_Down_indication_parameter *p =
+			(struct Link_Going_Down_indication_parameter*)parameter;
 	// notify local & remote subscribers
 
 	printk(KERN_INFO "MIH: mih_link_sap Link_Going_Down.indication\n");
 
-	list_add(&param->finished, &mihf_finished_work_list);
+	kfree(p->LinkIdentifier.link_addr);
+	kfree(p);
 }
 
 // (66)
