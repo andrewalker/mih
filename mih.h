@@ -192,30 +192,73 @@ typedef long double u128;
 #define FREE           7
 #define FLAT_RATE      8
 
-// Type values for TLV encoding (290)
-#define SRC_MIHF_ID_TLV              1  // Source MIHF ID
-#define DST_MIHF_ID_TLV              2  // Destination MIHF ID
-#define STATUS_TLV                   3  // Status
-#define LINK_TYPE_TLV                4  // Link type
-#define MIH_EVENT_LIST_TLV           5  // MIH event list
-#define MIH_COMMAND_LIST_TLV         6  // MIH command list
-#define MIIS_QUERY_TYPE_LIST_TLV     7  // MIIS query type list
-#define TRANSPORT_OPTION_LIST_TLV    8  // Transport option list
-#define LINK_ADDRESS_LIST_TLV        9
-#define MBB_HO_SUPP_TLV             10  // MBB handover support
-#define REG_REQUEST_CODE_TLV        11  // Register request code
-#define VALID_TIME_INTERVAL_TLV     12  // Valid time interval
-#define LINK_IDENTIFIER_TLV         13
-#define NEW_LINK_IDENTIFIER_TLV     14
-#define OLD_LINK_IDENTIFIER_TLV     15
-#define NEW_ACCESS_ROUTER_TLV       16
-#define IP_RENEWAL_FLAG_TLV         17
-#define MOBILITY_MGMT_SUPP_TLV      18
-#define IP_ADDR_CONFIG_MTHDS_TLV    19
-#define LINK_DOWN_REASON_CODE_TLV   20
-#define TIME_INTERVAL_TLV           21
-#define LINK_GOING_DOWN_REASON_TLV  22
-// ...
+/* Type values for TLV encoding (290) */
+#define SRC_MIHF_ID_TLV				1  /* Source MIHF ID */
+#define DST_MIHF_ID_TLV				2  /* Destination MIHF ID */
+#define STATUS_TLV				3  /* Status */
+#define LINK_TYPE_TLV				4  /* Link type */
+#define MIH_EVENT_LIST_TLV			5  /* MIH event list */
+#define MIH_COMMAND_LIST_TLV			6  /* MIH command list */
+#define MIIS_QUERY_TYPE_LIST_TLV		7  /* MIIS query type list */
+#define TRANSPORT_OPTION_LIST_TLV		8  /* Transport option list */
+#define LINK_ADDRESS_LIST_TLV			9
+#define MBB_HO_SUPP_TLV				10  /* MBB handover support */
+#define REG_REQUEST_CODE_TLV			11  /* Register request code */
+#define VALID_TIME_INTERVAL_TLV			12  /* Valid time interval */
+#define LINK_IDENTIFIER_TLV			13
+#define NEW_LINK_IDENTIFIER_TLV			14
+#define OLD_LINK_IDENTIFIER_TLV			15
+#define NEW_ACCESS_ROUTER_TLV			16
+#define IP_RENEWAL_FLAG_TLV			17
+#define MOBILITY_MGMT_SUPP_TLV			18
+#define IP_ADDR_CONFIG_MTHDS_TLV		19
+#define LINK_DOWN_REASON_CODE_TLV		20
+#define TIME_INTERVAL_TLV			21
+#define LINK_GOING_DOWN_REASON_TLV		22
+#define LINK_PARAMETER_REPORT_LIST_TLV		23
+#define DEVICE_STATES_REQUEST_TLV		24
+#define LINK_IDENTIFIER_LIST_TLV		25
+#define DEVICE_STATES_RESPONSE_LIST_TLV		26
+#define GET_STATUS_REQUEST_SET_TLV		27
+#define GET_STATUS_RESPONSE_LIST_TLV		28
+#define CONFIGURE_REQUEST_LIST_TLV		29
+#define CONFIGURE_RESPONSE_LIST_TLV		30
+#define LIST_OF_LINK_POA_LIST_TLV		31
+#define PREFERRED_LINK_LIST_TLV			32
+#define HO_RESOURCE_QUERY_LIST_TLV		33
+#define HO_STATUS_TLV				34
+#define ACCESS_ROUTER_ADDRESS_TLV		35
+#define DHCP_SERVER_ADDRESS_TLV			36
+#define FA_ADDRESS_TLV				37
+#define LINK_ACTIONS_LIST_TLV			38
+#define LINK_ACTIONS_RESULT_LIST_TLV		39
+#define HO_RESULT_TLV				40
+#define RESOURCE_STATUS_TLV			41
+#define RESOURCE_RETENTION_STATUS_TLV		42
+#define INFO_QUERY_BINARY_DATA_LIST_TLV		43
+#define INFO_QUERY_RDF_DATA_LIST_TLV		44
+#define INFO_QUERY_RDF_SCHEMA_URL_TLV		45
+#define INFO_QUERY_RDF_SCHEMA_LIST_TLV		46
+#define MAX_RESPONSE_SIZE_TLV			47
+#define INFO_RESPONSE_BINARY_DATA_LIST_TLV	48
+#define INFO_RESPONSE_RDF_DATA_LIST_TLV		49
+#define INFO_RESPONSE_RDF_SCHEMA_URL_LIST_TLV	50
+#define INFO_RESPONSE_RDF_SCHEMA_LIST_TLV	51
+#define MOBILE_NODE_MIHF_ID_TLV			52
+#define QUERY_RESOURCE_REPORT_FLAG_TLV		53
+#define EVENT_CONFIGURATION_INFO_LIST_TLV	54
+#define TARGET_NETWORK_INFO_TLV			55
+#define LIST_OF_TARGET_NETWORK_INFO_TLV		56
+#define ASSIGNED_RESOURCE_SET_TLV		57
+#define LINK_DETECTED_INFO_LIST_TLV		58
+#define MN_LINK_ID_TLV				59
+#define POA_TLV					60
+#define UNAUTHENTICATED_INFO_REQUEST_TLV	61
+#define NETWORK_TYPE_TLV			62
+#define REQUESTED_RESOURCE_SET_TLV		63
+/* Reserved TLVs				64-99 */
+/* Vendor Specific TLV				100 */
+/* Reserved for exeprimental TLVs		101-255 */
 
 // Link down reason codes (235)
 #define LD_EXPLICIT_DISCONNECT       0
@@ -723,18 +766,16 @@ typedef struct {
 } mih_header_t;
 
 typedef struct tlv {
+	struct list_head list;
+
 	unsigned char type;
-	// the size of the lenght field depends on the TLV type...
-	unsigned int length; // lenght has at least one octet
-	unsigned char *value; // variable size.
-		// Possibly one or more bytes of the lenght size variable octets +
-		// the value itself
-	struct tlv *next;
+	unsigned int length; /* length semantics is dependent on TLV type  */
+	unsigned char value[];
 } mih_tlv_t;
 
 typedef struct {
-	mih_header_t *header;
-	mih_tlv_t *tlv;
+	mih_header_t header;
+	mih_tlv_t tlvs;
 } mih_message_t;
 
 
