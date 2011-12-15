@@ -5,32 +5,31 @@
 #include "proto.h"
 
 
-int ProcessService(char *in_buf, int in_len)
+int ProcessService(mih_message_t *message)
 {
 	int res = -1;
-	mih_header_t *header = (mih_header_t *)in_buf;
 
 	if (verbose)
 		printk(KERN_INFO "MIH: ProcessService\n");
 
-	if (header->sid != SERVICE_MANAGEMENT)
+	if (message->header.sid != SERVICE_MANAGEMENT)
 		return -1;
 
-	switch (header->aid) {
+	switch (message->header.aid) {
 		case (MIH_CAPABILITY_DISCOVER):
-			res = CapabilityDiscover(in_buf, in_len);
+			res = CapabilityDiscover(message);
 			break;
 		case (MIH_REGISTER):
-			res = Register(in_buf, in_len);
+			res = Register(message);
 			break;
 		case (MIH_DEREGISTER):
-			res = Deregister(in_buf, in_len);
+			res = Deregister(message);
 			break;
 		case (MIH_EVENT_SUBSCRIBE):
-			res = EventSubscribe(in_buf, in_len);
+			res = EventSubscribe(message);
 			break;
 		case (MIH_EVENT_UNSUBSCRIBE):
-			res = EventUnsubscribe(in_buf, in_len);
+			res = EventUnsubscribe(message);
 			break;
 		default:
 			if (verbose)
@@ -42,38 +41,37 @@ int ProcessService(char *in_buf, int in_len)
 }
 
 
-int ProcessEvent(char *in_buf, int in_len)
+int ProcessEvent(mih_message_t *message)
 {
 	int res = -1;
-	mih_header_t *header = (mih_header_t *)in_buf;
 
 	if (verbose)
 		printk(KERN_INFO "MIH: ProcessEvent\n");
 
-	if (header->sid != EVENT_SERVICE)
+	if (message->header.sid != EVENT_SERVICE)
 		return -1;
 
-	switch (header->aid) {
+	switch (message->header.aid) {
 		case (MIH_LINK_DETECTED):
-			res = LinkDetected(in_buf, in_len);
+			res = LinkDetected(message);
 			break;
 		case (MIH_LINK_UP):
-			res = LinkUp(in_buf, in_len);
+			res = LinkUp(message);
 			break;
 		case (MIH_LINK_DOWN):
-			res = LinkDown(in_buf, in_len);
+			res = LinkDown(message);
 			break;
 		case (MIH_LINK_PARAMETERS_REPORT):
-			res = LinkParametersReport(in_buf, in_len);
+			res = LinkParametersReport(message);
 			break;
 		case (MIH_LINK_GOING_DOWN):
-			res = LinkGoingDown(in_buf, in_len);
+			res = LinkGoingDown(message);
 			break;
 		case (MIH_LINK_HANDOVER_IMMINENT):
-			res = LinkHandoverImminent(in_buf, in_len);
+			res = LinkHandoverImminent(message);
 			break;
 		case (MIH_LINK_HANDOVER_COMPLETE):
-			res = LinkHandoverComplete(in_buf, in_len);
+			res = LinkHandoverComplete(message);
 			break;
 		default:
 			if (verbose)
@@ -85,50 +83,49 @@ int ProcessEvent(char *in_buf, int in_len)
 }
 
 
-int ProcessCmd(char *in_buf, int in_len)
+int ProcessCmd(mih_message_t *message)
 {
 	int res = -1;
-	mih_header_t *header = (mih_header_t *)in_buf;
 
 	if (verbose)
 		printk(KERN_INFO "MIH: ProcessCmd\n");
 
-	if (header->sid != COMMAND_SERVICE)
+	if (message->header.sid != COMMAND_SERVICE)
 		return -1;
 
-	switch (header->aid) {
+	switch (message->header.aid) {
 		case (MIH_LINK_GET_PARAMETERS):
-			res = LinkGetParameters(in_buf, in_len);
+			res = LinkGetParameters(message);
 			break;
 		case (MIH_LINK_CONFIGURE_THRESHOLDS):
-			res = LinkConfigureThresholds(in_buf, in_len);
+			res = LinkConfigureThresholds(message);
 			break;
 		case (MIH_LINK_ACTIONS):
-			res = LinkActions(in_buf, in_len);
+			res = LinkActions(message);
 			break;
 		case (MIH_NET_HO_CANDIDATE_QUERY):
-			res = NetHOCandidateQuery(in_buf, in_len);
+			res = NetHOCandidateQuery(message);
 			break;
 		case (MIH_MN_HO_CANDIDATE_QUERY):
-			res = MNHOCandidateQuery(in_buf, in_len);
+			res = MNHOCandidateQuery(message);
 			break;
 		case (MIH_N2N_HO_QUERY_RESOURCES):
-			res = N2NHOQueryResources(in_buf, in_len);
+			res = N2NHOQueryResources(message);
 			break;
 		case (MIH_MN_HO_COMMIT):
-			res = MNHOCommit(in_buf, in_len);
+			res = MNHOCommit(message);
 			break;
 		case (MIH_NET_HO_COMMIT):
-			res = NetHOCommit(in_buf, in_len);
+			res = NetHOCommit(message);
 			break;
 		case (MIH_N2N_HO_COMMIT):
-			res = N2NHOCommit(in_buf, in_len);
+			res = N2NHOCommit(message);
 			break;
 		case (MIH_MN_HO_COMPLETE):
-			res = MNHOComplete(in_buf, in_len);
+			res = MNHOComplete(message);
 			break;
 		case (MIH_N2N_HO_COMPLETE):
-			res = N2NHOComplete(in_buf, in_len);
+			res = N2NHOComplete(message);
 			break;
 		default:
 			if (verbose)
@@ -140,32 +137,31 @@ int ProcessCmd(char *in_buf, int in_len)
 }
 
 
-int ProcessInfo(char *in_buf, int in_len)
+int ProcessInfo(mih_message_t *message)
 {
 	int res = -1;
-	mih_header_t *header = (mih_header_t *)in_buf;
 
 	if (verbose)
 		printk(KERN_INFO "MIH: ProcessInfo\n");
 
-	if (header->sid != INFORMATION_SERVICE)
+	if (message->header.sid != INFORMATION_SERVICE)
 		return -1;
 
-	switch (header->aid) {
+	switch (message->header.aid) {
 		case (MIH_CAPABILITY_DISCOVER):
-			res = CapabilityDiscover(in_buf, in_len);
+			res = CapabilityDiscover(message);
 			break;
 		case (MIH_REGISTER):
-			res = Register(in_buf, in_len);
+			res = Register(message);
 			break;
 		case (MIH_DEREGISTER):
-			res = Deregister(in_buf, in_len);
+			res = Deregister(message);
 			break;
 		case (MIH_EVENT_SUBSCRIBE):
-			res = EventSubscribe(in_buf, in_len);
+			res = EventSubscribe(message);
 			break;
 		case (MIH_EVENT_UNSUBSCRIBE):
-			res = EventUnsubscribe(in_buf, in_len);
+			res = EventUnsubscribe(message);
 			break;
 		default:
 			if (verbose)
@@ -177,29 +173,28 @@ int ProcessInfo(char *in_buf, int in_len)
 }
 
 
-int ProcessRequest(char *in_buf, int in_len)
+int ProcessRequest(mih_message_t *message)
 {
 	int res = -1;
-	mih_header_t *header = (mih_header_t *)in_buf;
 
 	if (verbose) {
-		printk(KERN_INFO "MIH: Processing request (%d)\n",in_len);
+		printk(KERN_INFO "MIH: Processing request\n");
 	}
 
 	/* Do we need a structure for holding the information extracted from
 	   the PDU? */
-	switch (header->sid) {
+	switch (message->header.sid) {
 		case (SERVICE_MANAGEMENT):
-			res = ProcessService(in_buf, in_len);
+			res = ProcessService(message);
 			break;
 		case (EVENT_SERVICE):
-			res = ProcessEvent(in_buf, in_len);
+			res = ProcessEvent(message);
 			break;
 		case (COMMAND_SERVICE):
-			res = ProcessCmd(in_buf, in_len);
+			res = ProcessCmd(message);
 			break;
 		case (INFORMATION_SERVICE):
-			res = ProcessInfo(in_buf, in_len);
+			res = ProcessInfo(message);
 			break;
 		default:
 			if (verbose)
@@ -211,10 +206,9 @@ int ProcessRequest(char *in_buf, int in_len)
 }
 
 
-int CapabilityDiscover(char *in_buf, int in_len)
+int CapabilityDiscover(mih_message_t *message)
 {
 	int res = -1;
-	mih_header_t *header = (mih_header_t *)in_buf;
 
 	mihf_id_t sourceidentifier;
 	/* mihf_id_t  destinationidentifier; */
@@ -229,13 +223,13 @@ int CapabilityDiscover(char *in_buf, int in_len)
 	if (verbose)
 		printk(KERN_INFO "MIH: Capability Discovery\n");
 
-	if (header->aid != MIH_CAPABILITY_DISCOVER)
+	if (message->header.aid != MIH_CAPABILITY_DISCOVER)
 		return -1;
 
 	/* Compare destinationidentifier with local identifier (_mymihfid)? */
 
 	/* Requests and responses may arrive from the network. */
-	switch (header->opcode) {
+	switch (message->header.opcode) {
 		case (REQUEST):
 			res = MIH_Capability_Discover_indication(
 					sourceidentifier,
@@ -272,18 +266,17 @@ int CapabilityDiscover(char *in_buf, int in_len)
 }
 
 
-int Register(char *in_buf, int in_len)
+int Register(mih_message_t *message)
 {
 	int res = -1;
-	mih_header_t *header = (mih_header_t *)in_buf;
 
 	if (verbose)
 		printk(KERN_INFO "MIH: Register\n");
 
-	if (header->aid != MIH_REGISTER)
+	if (message->header.aid != MIH_REGISTER)
 		return -1;
 
-	switch (header->opcode) {
+	switch (message->header.opcode) {
 		/*
 		 * MIH_Register.request(
 		 *		DestinationIdentifier,
@@ -306,18 +299,17 @@ int Register(char *in_buf, int in_len)
 	return res;
 }
 
-int Deregister(char *in_buf, int in_len)
+int Deregister(mih_message_t *message)
 {
 	int res = -1;
-	mih_header_t *header = (mih_header_t *)in_buf;
 
 	if (verbose)
 		printk(KERN_INFO "MIH: Deregister\n");
 
-	if (header->aid != MIH_DEREGISTER)
+	if (message->header.aid != MIH_DEREGISTER)
 		return -1;
 
-	switch (header->opcode) {
+	switch (message->header.opcode) {
 		case (REQUEST):
 			res = 0;
 			break;
@@ -334,18 +326,17 @@ int Deregister(char *in_buf, int in_len)
 }
 
 
-int EventSubscribe(char *in_buf, int in_len)
+int EventSubscribe(mih_message_t *message)
 {
 	int res = -1;
-	mih_header_t *header = (mih_header_t *)in_buf;
 
 	if (verbose)
 		printk(KERN_INFO "MIH: Event Subscribe\n");
 
-	if (header->aid != MIH_EVENT_SUBSCRIBE)
+	if (message->header.aid != MIH_EVENT_SUBSCRIBE)
 		return -1;
 
-	switch (header->opcode) {
+	switch (message->header.opcode) {
 		case (REQUEST):
 			/*
 			 * MIH_Event_Subscribe.request(
@@ -366,18 +357,17 @@ int EventSubscribe(char *in_buf, int in_len)
 }
 
 
-int EventUnsubscribe(char *in_buf, int in_len)
+int EventUnsubscribe(mih_message_t *message)
 {
 	int res = -1;
-	mih_header_t *header = (mih_header_t *)in_buf;
 
 	if (verbose)
 		printk(KERN_INFO "MIH: Event Unsubscribe\n");
 
-	if (header->aid != MIH_EVENT_UNSUBSCRIBE)
+	if (message->header.aid != MIH_EVENT_UNSUBSCRIBE)
 		return -1;
 
-	switch (header->opcode) {
+	switch (message->header.opcode) {
 		case (REQUEST):
 			res = 0;
 			break;
@@ -394,18 +384,17 @@ int EventUnsubscribe(char *in_buf, int in_len)
 }
 
 
-int LinkDetected(char *in_buf, int in_len)
+int LinkDetected(mih_message_t *message)
 {
 	int res = -1;
-	mih_header_t *header = (mih_header_t *)in_buf;
 
 	if (verbose)
 		printk(KERN_INFO "MIH: Link Detected\n");
 
-	if (header->aid != MIH_LINK_DETECTED)
+	if (message->header.aid != MIH_LINK_DETECTED)
 		return -1;
 
-	switch (header->opcode) {
+	switch (message->header.opcode) {
 		case (REQUEST):
 			res = 0;
 			break;
@@ -422,18 +411,17 @@ int LinkDetected(char *in_buf, int in_len)
 }
 
 
-int LinkUp(char *in_buf, int in_len)
+int LinkUp(mih_message_t *message)
 {
 	int res = -1;
-	mih_header_t *header = (mih_header_t *)in_buf;
 
 	if (verbose)
 		printk(KERN_INFO "MIH: Link Up\n");
 
-	if (header->aid != MIH_LINK_UP)
+	if (message->header.aid != MIH_LINK_UP)
 		return -1;
 
-	switch (header->opcode) {
+	switch (message->header.opcode) {
 		case (REQUEST):
 			res = 0;
 			break;
@@ -449,18 +437,17 @@ int LinkUp(char *in_buf, int in_len)
 }
 
 
-int LinkDown(char *in_buf, int in_len)
+int LinkDown(mih_message_t *message)
 {
 	int res = -1;
-	mih_header_t *header = (mih_header_t *)in_buf;
 
 	if (verbose)
 		printk(KERN_INFO "MIH: Link Down\n");
 
-	if (header->aid != MIH_LINK_DOWN)
+	if (message->header.aid != MIH_LINK_DOWN)
 		return -1;
 
-	switch (header->opcode) {
+	switch (message->header.opcode) {
 		case (REQUEST):
 			res = 0;
 			break;
@@ -477,18 +464,17 @@ int LinkDown(char *in_buf, int in_len)
 }
 
 
-int LinkParametersReport(char *in_buf, int in_len)
+int LinkParametersReport(mih_message_t *message)
 {
 	int res = -1;
-	mih_header_t *header = (mih_header_t *)in_buf;
 
 	if (verbose)
 		printk(KERN_INFO "MIH: Link Parameters Report\n");
 
-	if (header->aid != MIH_LINK_PARAMETERS_REPORT)
+	if (message->header.aid != MIH_LINK_PARAMETERS_REPORT)
 		return -1;
 
-	switch (header->opcode) {
+	switch (message->header.opcode) {
 		case (REQUEST):
 			res = 0;
 			break;
@@ -505,18 +491,17 @@ int LinkParametersReport(char *in_buf, int in_len)
 }
 
 
-int LinkGoingDown(char *in_buf, int in_len)
+int LinkGoingDown(mih_message_t *message)
 {
 	int res = -1;
-	mih_header_t *header = (mih_header_t *)in_buf;
 
 	if (verbose)
 		printk(KERN_INFO "MIH: Link Going Down\n");
 
-	if (header->aid != MIH_LINK_GOING_DOWN)
+	if (message->header.aid != MIH_LINK_GOING_DOWN)
 		return -1;
 
-	switch (header->opcode) {
+	switch (message->header.opcode) {
 		case (REQUEST):
 			res = 0;
 			break;
@@ -533,18 +518,17 @@ int LinkGoingDown(char *in_buf, int in_len)
 }
 
 
-int LinkHandoverImminent(char *in_buf, int in_len)
+int LinkHandoverImminent(mih_message_t *message)
 {
 	int res = -1;
-	mih_header_t *header = (mih_header_t *)in_buf;
 
 	if (verbose)
 		printk(KERN_INFO "MIH: Link Handover Imminent\n");
 
-	if (header->aid != MIH_LINK_HANDOVER_IMMINENT)
+	if (message->header.aid != MIH_LINK_HANDOVER_IMMINENT)
 		return -1;
 
-	switch (header->opcode) {
+	switch (message->header.opcode) {
 		case (REQUEST):
 			res = 0;
 			break;
@@ -561,18 +545,17 @@ int LinkHandoverImminent(char *in_buf, int in_len)
 }
 
 
-int LinkHandoverComplete(char *in_buf, int in_len)
+int LinkHandoverComplete(mih_message_t *message)
 {
 	int res = -1;
-	mih_header_t *header = (mih_header_t *)in_buf;
 
 	if (verbose)
 		printk(KERN_INFO "MIH: Link Handover Complete\n");
 
-	if (header->aid != MIH_LINK_HANDOVER_COMPLETE)
+	if (message->header.aid != MIH_LINK_HANDOVER_COMPLETE)
 		return -1;
 
-	switch (header->opcode) {
+	switch (message->header.opcode) {
 		case (REQUEST):
 			res = 0;
 			break;
@@ -589,18 +572,17 @@ int LinkHandoverComplete(char *in_buf, int in_len)
 }
 
 
-int LinkGetParameters(char *in_buf, int in_len)
+int LinkGetParameters(mih_message_t *message)
 {
 	int res = -1;
-	mih_header_t *header = (mih_header_t *)in_buf;
 
 	if (verbose)
 		printk(KERN_INFO "MIH: Link Get Parameters\n");
 
-	if (header->aid != MIH_LINK_GET_PARAMETERS)
+	if (message->header.aid != MIH_LINK_GET_PARAMETERS)
 		return -1;
 
-	switch (header->opcode) {
+	switch (message->header.opcode) {
 		case (REQUEST):
 			res = 0;
 			break;
@@ -617,18 +599,17 @@ int LinkGetParameters(char *in_buf, int in_len)
 }
 
 
-int LinkConfigureThresholds(char *in_buf, int in_len)
+int LinkConfigureThresholds(mih_message_t *message)
 {
 	int res = -1;
-	mih_header_t *header = (mih_header_t *)in_buf;
 
 	if (verbose)
 		printk(KERN_INFO "MIH: Link Configure Thresholds\n");
 
-	if (header->aid != MIH_LINK_CONFIGURE_THRESHOLDS)
+	if (message->header.aid != MIH_LINK_CONFIGURE_THRESHOLDS)
 		return -1;
 
-	switch (header->opcode) {
+	switch (message->header.opcode) {
 		case (REQUEST):
 			res = 0;
 			break;
@@ -645,18 +626,17 @@ int LinkConfigureThresholds(char *in_buf, int in_len)
 }
 
 
-int LinkActions(char *in_buf, int in_len)
+int LinkActions(mih_message_t *message)
 {
 	int res = -1;
-	mih_header_t *header = (mih_header_t *)in_buf;
 
 	if (verbose)
 		printk(KERN_INFO "MIH: Link Actions\n");
 
-	if (header->aid != MIH_LINK_ACTIONS)
+	if (message->header.aid != MIH_LINK_ACTIONS)
 		return -1;
 
-	switch (header->opcode) {
+	switch (message->header.opcode) {
 		case (REQUEST):
 			res = 0;
 			break;
@@ -673,18 +653,17 @@ int LinkActions(char *in_buf, int in_len)
 }
 
 
-int NetHOCandidateQuery(char *in_buf, int in_len)
+int NetHOCandidateQuery(mih_message_t *message)
 {
 	int res = -1;
-	mih_header_t *header = (mih_header_t *)in_buf;
 
 	if (verbose)
 		printk(KERN_INFO "MIH: Net HO Candidate\n");
 
-	if (header->aid != MIH_NET_HO_CANDIDATE_QUERY)
+	if (message->header.aid != MIH_NET_HO_CANDIDATE_QUERY)
 		return -1;
 
-	switch (header->opcode) {
+	switch (message->header.opcode) {
 		case (REQUEST):
 			res = 0;
 			break;
@@ -701,18 +680,17 @@ int NetHOCandidateQuery(char *in_buf, int in_len)
 }
 
 
-int MNHOCandidateQuery(char *in_buf, int in_len)
+int MNHOCandidateQuery(mih_message_t *message)
 {
 	int res = -1;
-	mih_header_t *header = (mih_header_t *)in_buf;
 
 	if (verbose)
 		printk(KERN_INFO "MIH: MN HO Candidate Query\n");
 
-	if (header->aid != MIH_MN_HO_CANDIDATE_QUERY)
+	if (message->header.aid != MIH_MN_HO_CANDIDATE_QUERY)
 		return -1;
 
-	switch (header->opcode) {
+	switch (message->header.opcode) {
 		case (REQUEST):
 			res = 0;
 			break;
@@ -729,18 +707,17 @@ int MNHOCandidateQuery(char *in_buf, int in_len)
 }
 
 
-int N2NHOQueryResources(char *in_buf, int in_len)
+int N2NHOQueryResources(mih_message_t *message)
 {
 	int res = -1;
-	mih_header_t *header = (mih_header_t *)in_buf;
 
 	if (verbose)
 		printk(KERN_INFO "MIH: N2N HO Query Resources\n");
 
-	if (header->aid != MIH_N2N_HO_QUERY_RESOURCES)
+	if (message->header.aid != MIH_N2N_HO_QUERY_RESOURCES)
 		return -1;
 
-	switch (header->opcode) {
+	switch (message->header.opcode) {
 		case (REQUEST):
 			res = 0;
 			break;
@@ -757,18 +734,17 @@ int N2NHOQueryResources(char *in_buf, int in_len)
 }
 
 
-int MNHOCommit(char *in_buf, int in_len)
+int MNHOCommit(mih_message_t *message)
 {
 	int res = -1;
-	mih_header_t *header = (mih_header_t *)in_buf;
 
 	if (verbose)
 		printk(KERN_INFO "MIH: MN HO Commit\n");
 
-	if (header->aid != MIH_MN_HO_COMMIT)
+	if (message->header.aid != MIH_MN_HO_COMMIT)
 		return -1;
 
-	switch (header->opcode) {
+	switch (message->header.opcode) {
 		case (REQUEST):
 			res = 0;
 			break;
@@ -785,18 +761,17 @@ int MNHOCommit(char *in_buf, int in_len)
 }
 
 
-int NetHOCommit(char *in_buf, int in_len)
+int NetHOCommit(mih_message_t *message)
 {
 	int res = -1;
-	mih_header_t *header = (mih_header_t *)in_buf;
 
 	if (verbose)
 		printk(KERN_INFO "MIH: Net HO Commit\n");
 
-	if (header->aid != MIH_NET_HO_COMMIT)
+	if (message->header.aid != MIH_NET_HO_COMMIT)
 		return -1;
 
-	switch (header->opcode) {
+	switch (message->header.opcode) {
 		case (REQUEST):
 			res = 0;
 			break;
@@ -813,18 +788,17 @@ int NetHOCommit(char *in_buf, int in_len)
 }
 
 
-int N2NHOCommit(char *in_buf, int in_len)
+int N2NHOCommit(mih_message_t *message)
 {
 	int res = -1;
-	mih_header_t *header = (mih_header_t *)in_buf;
 
 	if (verbose)
 		printk(KERN_INFO "MIH: N2N HO Commit\n");
 
-	if (header->aid != MIH_N2N_HO_COMMIT)
+	if (message->header.aid != MIH_N2N_HO_COMMIT)
 		return -1;
 
-	switch (header->opcode) {
+	switch (message->header.opcode) {
 		case (REQUEST):
 			res = 0;
 			break;
@@ -841,18 +815,17 @@ int N2NHOCommit(char *in_buf, int in_len)
 }
 
 
-int MNHOComplete(char *in_buf, int in_len)
+int MNHOComplete(mih_message_t *message)
 {
 	int res = -1;
-	mih_header_t *header = (mih_header_t *)in_buf;
 
 	if (verbose)
 		printk(KERN_INFO "MIH: MN HO Complete\n");
 
-	if (header->aid != MIH_MN_HO_COMPLETE)
+	if (message->header.aid != MIH_MN_HO_COMPLETE)
 		return -1;
 
-	switch (header->opcode) {
+	switch (message->header.opcode) {
 		case (REQUEST):
 			res = 0;
 			break;
@@ -869,18 +842,17 @@ int MNHOComplete(char *in_buf, int in_len)
 }
 
 
-int N2NHOComplete(char *in_buf, int in_len)
+int N2NHOComplete(mih_message_t *message)
 {
 	int res = -1;
-	mih_header_t *header = (mih_header_t *)in_buf;
 
 	if (verbose)
 		printk(KERN_INFO "MIH: N2N HO Complete\n");
 
-	if (header->aid != MIH_N2N_HO_COMPLETE)
+	if (message->header.aid != MIH_N2N_HO_COMPLETE)
 		return -1;
 
-	switch (header->opcode) {
+	switch (message->header.opcode) {
 		case (REQUEST):
 			res = 0;
 			break;

@@ -38,7 +38,7 @@ MODULE_DESCRIPTION("Media Independent Handover Framework");
 static int verbose = 0;
 module_param(verbose, int, S_IWUSR | S_IRUGO);
 MODULE_PARM_DESC(verbose, "Causes control messages to be sent to "
-							"/var/log/messages");
+		"/var/log/messages");
 
 
 /* Global variables. */
@@ -49,8 +49,8 @@ struct task_struct *_dev_mon_t = NULL;	/* Kernel thread. */
 struct task_struct *_mihf_t = NULL;	/* Kernel thread. */
 struct task_struct *_dispatch_t = NULL;	/* Kernel thread. */
 
-mih_tlv_t _src_mihf_id;
-mih_tlv_t _dst_mihf_id;
+mih_tlv_t *_src_mihf_id;
+mih_tlv_t *_dst_mihf_id;
 
 int _threads_should_stop = 0;
 
@@ -79,6 +79,8 @@ int SymbolExport(void)
 
 int mih_Init(void)
 {
+	int mihf_id_len = strlen(_mymihfid);
+
 	/* Allocates space for the sending and receiving buffers. */
 	_snd_buf = kmalloc(MIH_PDU_LEN, GFP_KERNEL);
 	_rcv_buf = kmalloc(MIH_PDU_LEN, GFP_KERNEL);
@@ -86,16 +88,16 @@ int mih_Init(void)
 	/* Initialization of local MIH identifier: done in context.c. (?) */
 
 	/* Global variable for Source MIHF ID. */
-	_src_mihf_id.type = SRC_MIHF_ID_TLV;
-	_src_mihf_id.length = strlen(_mymihfid);
-	_src_mihf_id.value = kmalloc(_src_mihf_id.length, GFP_KERNEL);
-	memcpy(_src_mihf_id.value, _mymihfid, strlen(_mymihfid));
+	_src_mihf_id = kmalloc(sizeof(*_src_mihf_id) + mihf_id_len, GFP_KERNEL);
+	_src_mihf_id->type = SRC_MIHF_ID_TLV;
+	_src_mihf_id->length = strlen(_mymihfid);
+	memcpy(_src_mihf_id->value, _mymihfid, mihf_id_len);
 
 	/* Global variable for Destination MIHF ID. */
-	_dst_mihf_id.type = DST_MIHF_ID_TLV;
-	_dst_mihf_id.length = strlen(_mymihfid);
-	_dst_mihf_id.value = kmalloc(_dst_mihf_id.length, GFP_KERNEL);
-	memcpy(_dst_mihf_id.value, _mymihfid, strlen(_mymihfid));
+	_dst_mihf_id = kmalloc(sizeof(*_dst_mihf_id) + mihf_id_len, GFP_KERNEL);
+	_dst_mihf_id->type = DST_MIHF_ID_TLV;
+	_dst_mihf_id->length = strlen(_mymihfid);
+	memcpy(_dst_mihf_id->value, _mymihfid, mihf_id_len);
 
 	return 0;
 }
@@ -238,6 +240,9 @@ static void __exit mod_End(void)
 	/* Frees the memory used by the sending and receiving buffers. */
 	kfree(_snd_buf);
 	kfree(_rcv_buf);
+
+	kfree(_src_mihf_id);
+	kfree(_dst_mihf_id);
 
 	printk(KERN_INFO "MIH module unloaded...\n");
 }

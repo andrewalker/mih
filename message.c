@@ -1,257 +1,263 @@
-/* Utility functions for message handling. */
+/*
+ * MIH Auxiliary functions
+ */
 
+#include "mih.h"
 #include "message.h"
 
-mih_tlv_t *NewTlv(unsigned char type, unsigned char *value, int length)
+void unpack_mih_header(unsigned char* in_buf, mih_header_t *hdr)
 {
-	mih_tlv_t *new_tlv = kmalloc(sizeof(mih_tlv_t) + length, GFP_KERNEL);
-	new_tlv->type = type;
-	new_tlv->length = length;
-	new_tlv->value = (unsigned char *) new_tlv + sizeof(mih_tlv_t);
-	memcpy(new_tlv->value, value, length);
-	new_tlv->next = NULL;
+	hdr->version		=  in_buf[0] >> 4;
+	hdr->ackreq		= (in_buf[0] >> 3) & 0x1;
+	hdr->ackrsp		= (in_buf[0] >> 2) & 0x1;
+	hdr->uir		= (in_buf[0] >> 1) & 0x1;
+	hdr->morefragment	=  in_buf[0]       & 0x1;
+	hdr->fragmentnumber	=  in_buf[1] >> 1;
+	hdr->rsvd1		=  in_buf[1]       & 0x1;
+	hdr->sid		=  in_buf[2] >> 4;
+	hdr->opcode		= (in_buf[2] >> 2) & 0x3;
+	hdr->rsvd2		=  in_buf[4] >> 4;
 
-	return new_tlv;
+	hdr->tid		= ((in_buf[4] & 0xF) << 8) | in_buf[5];
+	hdr->aid		= ((in_buf[2] & 0x3) << 8) | in_buf[3];
+	hdr->payloadlength	=  (in_buf[6]        << 8) | in_buf[7];
 }
 
-
-/* Memory for the header and the tlv list is allocated here. */
-mih_message_t *MUnpack(unsigned char *msgseq, int seqlen)
+int parse_variable_length_field(unsigned char* in_buf, unsigned int in_len,
+		unsigned int *length_value)
 {
-	int tlvlen, i, noct;
-	int paylen;
-	unsigned char *nexttlv;
-	mih_tlv_t *new_tlv, *tlvp;
-	mih_message_t *message = kmalloc(sizeof(mih_message_t), GFP_KERNEL);
+	unsigned int i;
+	unsigned int length = in_buf[0];
+	unsigned int length_octets;
+	unsigned int length_end;
 
-	message->header = kmalloc(sizeof(mih_header_t), GFP_KERNEL);
-
-	memcpy(message->header, msgseq, sizeof(mih_header_t));
-	message->tlv = NULL;
-	paylen = message->header->payloadlength;
-	nexttlv = msgseq + sizeof(mih_header_t);
-
-	/*
-	 * What if the announced payload length is incorrect? How do we end
-	 * this function?
-	 */
-	while (paylen > 0) {
-
-		if (msgseq[1] < 128) { /* case 1 */
-			tlvlen = (int) nexttlv[1];
-			noct = 0;
-		} else { /* cases 2 and 3 */
-			tlvlen = 128;
-			noct = (int)(nexttlv[1] & 0x7f);
-
-			/* Prevent errors here: return if noct > 3. */
-			if (noct > 3)
-				return message;
-
-			for (i = 0; i < noct; i++)
-				tlvlen += nexttlv[2 + i] << (noct - i - 1) * 8;
-		}
-
-		/* Who will free the tlv memory area? */
-		new_tlv = kmalloc(sizeof (mih_tlv_t) + tlvlen, GFP_KERNEL);
-		new_tlv->type = (int) nexttlv[0];
-		new_tlv->length = tlvlen;
-		new_tlv->next = NULL;
-		new_tlv->value = (unsigned char *) new_tlv + sizeof(mih_tlv_t);
-		/* FIXME: Improve these magic numbers (commented). */
-		memcpy(new_tlv->value,
-				nexttlv + 1 /*type*/ + 1 /*tlvlen*/ + noct,
-				tlvlen);
-
-		/* Add new_tlv to message tlv list. */
-		if (message->tlv == NULL)
-			message->tlv = new_tlv;
-		else {
-			tlvp = message->tlv;
-			while (tlvp->next != NULL)
-				tlvp = tlvp->next;
-			tlvp->next = new_tlv;
-		}
-
-		/* FIXME: Fix these magic numbers (commented). */
-		nexttlv = nexttlv + 1 /*type*/ + 1 /*len*/ + noct + tlvlen;
-		paylen -= tlvlen;
+	if (length <= 128) {
+		*length_value = length;
+		return 1;
 	}
 
-	/* Should we free the serialized message here? */
+	length_octets = length & 0x7F;
+	if (length_octets > sizeof(length)) {
+		return -1;
+	}
 
-	return message;
+	length_end = length_octets + 1;
+	length = in_buf[1];
+
+	for (i = 2; i < length_end; ++i)
+		length = (length << 8) | in_buf[i];
+
+	*length_value = length;
+	return i;
 }
 
-
-/* Memory for the msg is allocated here. */
-unsigned char *MPack(mih_message_t *message, int *packet_len)
+int unpack_mih_tlv(unsigned char* in_buf, unsigned int in_len, mih_tlv_t **tlv)
 {
-	int total_len; /* Total number of bytes to allocate. */
-	int noct; /* Number of bytes used to store the tlv length. */
-	int pos; /* Current writing position. */
-	int msglen;
-	int i;
-	mih_tlv_t *tlvp;
-	unsigned char *msgseq; /* The serialized message. */
+	int read;
+	int s;
+	unsigned char type = in_buf[0];
+	unsigned char *value;
+	unsigned int tlv_length;
 
-	/* Determine how many bytes we'll need for the header. */
-	total_len = sizeof(mih_header_t);
-	/* And for all the tlvs. */
-	tlvp = message->tlv;
-	while (tlvp) {
-		total_len += sizeof(tlvp->type) + sizeof(tlvp->length) +
-			tlvp->length;
-		/*
-		 * We might waste a few bytes when packing the length but it's
-		 * easier this way.
-		 */
-		tlvp = tlvp->next;
+	if (in_len < 2) {
+		printk(KERN_INFO "Invalid TLV");
+		return -1;
 	}
 
-	/* Prevent errors here: return if total_len > MAX. */
-	/* if(total_len > MAX)
-		return NULL; */
+	read = parse_variable_length_field(&in_buf[1], in_len - 1, &tlv_length);
+	if (read < 0)
+		return read;
 
-	msgseq = kmalloc(total_len,GFP_KERNEL);
+	value = &in_buf[++read];
 
-	/* Copy the header to the message sequence. */
-	memcpy(msgseq, message->header, sizeof(mih_header_t));
-
-	tlvp = message->tlv;
-	pos = sizeof(mih_header_t);
-
-	/* FIXME: Many magic numbers over the next lines. */
-	/* FIXME: Nesting ifs too deep, not necessary. Can we improve? */
-	while (tlvp) {
-
-		if (tlvp->length <= 128)
-			noct = 0;
-		else { /* Maximum of 4 bytes. */
-			if (tlvp->length - 128 > 0xffffff)
-				noct = 4;
-			else if (tlvp->length - 128 > 0xffff)
-					noct = 3;
-				else if (tlvp->length - 128 > 0xff)
-						noct = 2;
-					else noct = 1;
+	switch (type) {
+	case SRC_MIHF_ID_TLV:
+	case DST_MIHF_ID_TLV:
+		s = unpack_mihf_id_tlv(type, tlv_length, value, tlv);
+		break;
+	case STATUS_TLV:
+	case LINK_TYPE_TLV:
+	case MIH_EVENT_LIST_TLV:
+	case MIH_COMMAND_LIST_TLV:
+	case MIIS_QUERY_TYPE_LIST_TLV:
+	case TRANSPORT_OPTION_LIST_TLV:
+	case LINK_ADDRESS_LIST_TLV:
+	case MBB_HO_SUPP_TLV:
+	case REG_REQUEST_CODE_TLV:
+	case VALID_TIME_INTERVAL_TLV:
+	case LINK_IDENTIFIER_TLV:
+	case NEW_LINK_IDENTIFIER_TLV:
+	case OLD_LINK_IDENTIFIER_TLV:
+	case NEW_ACCESS_ROUTER_TLV:
+	case IP_RENEWAL_FLAG_TLV:
+	case MOBILITY_MGMT_SUPP_TLV:
+	case IP_ADDR_CONFIG_MTHDS_TLV:
+	case LINK_DOWN_REASON_CODE_TLV:
+	case TIME_INTERVAL_TLV:
+	case LINK_GOING_DOWN_REASON_TLV:
+	case LINK_PARAMETER_REPORT_LIST_TLV:
+	case DEVICE_STATES_REQUEST_TLV:
+	case LINK_IDENTIFIER_LIST_TLV:
+	case DEVICE_STATES_RESPONSE_LIST_TLV:
+	case GET_STATUS_REQUEST_SET_TLV:
+	case GET_STATUS_RESPONSE_LIST_TLV:
+	case CONFIGURE_REQUEST_LIST_TLV:
+	case CONFIGURE_RESPONSE_LIST_TLV:
+	case LIST_OF_LINK_POA_LIST_TLV:
+	case PREFERRED_LINK_LIST_TLV:
+	case HO_RESOURCE_QUERY_LIST_TLV:
+	case HO_STATUS_TLV:
+	case ACCESS_ROUTER_ADDRESS_TLV:
+	case DHCP_SERVER_ADDRESS_TLV:
+	case FA_ADDRESS_TLV:
+	case LINK_ACTIONS_LIST_TLV:
+	case LINK_ACTIONS_RESULT_LIST_TLV:
+	case HO_RESULT_TLV:
+	case RESOURCE_STATUS_TLV:
+	case RESOURCE_RETENTION_STATUS_TLV:
+	case INFO_QUERY_BINARY_DATA_LIST_TLV:
+	case INFO_QUERY_RDF_DATA_LIST_TLV:
+	case INFO_QUERY_RDF_SCHEMA_URL_TLV:
+	case INFO_QUERY_RDF_SCHEMA_LIST_TLV:
+	case MAX_RESPONSE_SIZE_TLV:
+	case INFO_RESPONSE_BINARY_DATA_LIST_TLV:
+	case INFO_RESPONSE_RDF_DATA_LIST_TLV:
+	case INFO_RESPONSE_RDF_SCHEMA_URL_LIST_TLV:
+	case INFO_RESPONSE_RDF_SCHEMA_LIST_TLV:
+	case MOBILE_NODE_MIHF_ID_TLV:
+	case QUERY_RESOURCE_REPORT_FLAG_TLV:
+	case EVENT_CONFIGURATION_INFO_LIST_TLV:
+	case TARGET_NETWORK_INFO_TLV:
+	case LIST_OF_TARGET_NETWORK_INFO_TLV:
+	case ASSIGNED_RESOURCE_SET_TLV:
+	case LINK_DETECTED_INFO_LIST_TLV:
+	case MN_LINK_ID_TLV:
+	case POA_TLV:
+	case UNAUTHENTICATED_INFO_REQUEST_TLV:
+	case NETWORK_TYPE_TLV:
+	case REQUESTED_RESOURCE_SET_TLV:
+	default:
+		if (verbose) {
+			printk(KERN_INFO "MIH: Unknown TLV type: %d\n",
+					in_buf[0]);
 		}
-		msgseq[pos] = (unsigned char)tlvp->type;
-		if (noct == 0)
-			msgseq[pos+1] = (unsigned char)tlvp->length;
-		else {
-			msgseq[pos+1] = (unsigned char)(0x80 | noct);
-			msglen = tlvp->length - 128;
-			for (i = 0; i < noct; i++) {
-				msgseq[pos + 2 + noct - i - 1] =
-					(unsigned char)msglen;
-				msglen = msglen >> 8;
-			}
-		}
-		memcpy(msgseq + pos + 2 + noct, tlvp->value, tlvp->length);
+		return -1;
+	};
 
-		pos += 1 /*type*/ + 1 /*len*/ + noct + tlvp->length;
+	if (s < 0)
+		read = s;
+	else
+		read += s;
 
-		tlvp = tlvp->next;
-	}
-
-	/* Adjust the total number of bytes packed. */
-	*packet_len = pos;
-
-	/* Should we free the tlvs and the message here? */
-
-	return msgseq;
+	return read;
 }
 
-
-/* Serializes the data from a TLV struct. Who will deal with fragmentation? */
-int TlvPack(unsigned char *buf, mih_tlv_t *tlv)
+int unpack_mih_message(unsigned char* in_buf, unsigned int in_len,
+		mih_message_t *msg)
 {
-	int noct; /* Number of bytes used to store the tlv length. */
-	int msglen;
-	int i;
+	mih_tlv_t *tlv;
+	int i = 0;
+	int s;
+	struct list_head *tlvs = &msg->tlvs.list;
+	unsigned int payload_len = in_len - sizeof(msg->header);
+	unsigned char* payload = &in_buf[sizeof(msg->header)];
 
-	buf[0] = (unsigned char)tlv->type;
-
-	/* FIXME: Many magic numbers over the next lines. */
-	/* FIXME: Nesting ifs too deep, not necessary. Can we improve? */
-	if (tlv->length <= 128)
-		noct = 0;
-	else { /* Maximum of 4 bytes. */
-		if (tlv->length - 128 > 0xffffff)
-			noct = 4;
-		else if (tlv->length - 128 > 0xffff)
-				noct = 3;
-			else if (tlv->length - 128 > 0xff)
-					noct = 2;
-				else noct = 1;
+	if (in_len < sizeof(msg->header)) {
+		printk(KERN_INFO "Invalid MIH message");
+		return -1;
 	}
-	if (noct == 0)
-		buf[1] = (unsigned char)tlv->length;
-	else {
-		buf[1] = (unsigned char)(0x80 | noct);
-		msglen = tlv->length - 128;
-		for (i = 0; i < noct; i++) {
-			buf[2 + noct - i - 1] = (unsigned char)msglen;
-			msglen = msglen >> 8;
+
+	unpack_mih_header(in_buf, &msg->header);
+
+	if (in_len != (msg->header.payloadlength + sizeof(msg->header))) {
+		printk(KERN_INFO "Invalid payload length");
+		return -1;
+	}
+
+	INIT_LIST_HEAD(tlvs);
+
+	while (i < msg->header.payloadlength) {
+		s = unpack_mih_tlv(payload, payload_len, &tlv);
+		if (s < 0) {
+			free_tlvs(&msg->tlvs);
+			return s;
 		}
+
+		i += s;
+		payload = &payload[s];
+		payload_len -= s;
+
+		list_add_tail(&tlv->list, tlvs);
 	}
-	memcpy(buf + 2 + noct, tlv->value, tlv->length);
-
-	/* Adjust the total number of bytes packed. */
-	return (2 + noct + tlv->length);
-}
-
-
-/* Extracts serialized data from the message. */
-int TlvUnpack(unsigned char *buf, mih_tlv_t *tlv)
-{
-	int noct; /* Number of bytes used to store the tlv length. */
-	int msglen;
-	int i;
-
-	/* TODO: just copied the code from TlvPack... */
-
-	buf[0] = (unsigned char)tlv->type;
-
-	if (tlv->length <= 128)
-		noct = 0;
-	else { /* Maximum of 4 bytes. */
-		if (tlv->length - 128 > 0xffffff)
-			noct = 4;
-		else if (tlv->length - 128 > 0xffff)
-				noct = 3;
-			else if (tlv->length - 128 > 0xff)
-					noct = 2;
-				else noct = 1;
-	}
-	if (noct == 0)
-		buf[1] = (unsigned char)tlv->length;
-	else {
-		buf[1] = (unsigned char)(0x80 | noct);
-		msglen = tlv->length - 128;
-		for (i = 0; i < noct; i++) {
-			buf[2 + noct - i - 1] = (unsigned char)msglen;
-			msglen = msglen >> 8;
-		}
-	}
-	memcpy(buf + 2 + noct, tlv->value, tlv->length);
-
-	/* Adjust the total number of bytes packed. */
-	return (2 + noct + tlv->length);
-}
-
-
-int NewTid()
-{
-	return ++_tid % MAX_TID;
-}
-
-
-int TidInit()
-{
-	/* Set the initial TID. */
-	get_random_bytes(&_tid, 1);
 
 	return 0;
 }
+
+int unpack_octet_string(unsigned char* buf, unsigned int buf_len, char **string)
+{
+	int length;
+	int s;
+	char *str;
+
+	s = parse_variable_length_field(buf, buf_len, &length);
+	if (s < 0) {
+		return s;
+	}
+
+	str = kmalloc(length + 1, GFP_KERNEL);
+	if (!str) {
+		printk(KERN_ERR "Failed to allocate memory");
+		return -1;
+	}
+
+	memcpy(str, &buf[s], length);
+	str[length] = '\0';
+
+	*string = str;
+	return s + length;
+}
+
+int unpack_mihf_id_tlv(unsigned char type, unsigned int length,
+		unsigned char* value, mih_tlv_t **tlv_addr)
+{
+	mih_tlv_t *tlv;
+	int s;
+
+	tlv = kmalloc(sizeof(*tlv), GFP_KERNEL);
+	tlv->type = type;
+	tlv->length = length;
+
+	s = unpack_octet_string(value, length, (char**)&tlv->value);
+	if (s < 0)
+		goto err;
+	if (s != length) {
+		goto length_err;
+	}
+
+	*tlv_addr = tlv;
+	return s;
+
+length_err:
+	kfree(tlv->value);
+err:
+	kfree(tlv);
+	return -1;
+}
+
+void free_tlv(mih_tlv_t *tlv)
+{
+	kfree(tlv->value);
+	kfree(tlv);
+}
+
+void free_tlvs(mih_tlv_t *tlvs)
+{
+	mih_tlv_t *tlv;
+
+	while (!list_empty(&tlvs->list)) {
+		tlv = list_first_entry(&tlvs->list, mih_tlv_t, list);
+		list_del(&tlv->list);
+		free_tlv(tlv);
+	}
+}
+

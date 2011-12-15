@@ -2,34 +2,34 @@
  * Protocol handling functions
  */
 
-int ProcessRequest(char *in_buf, int in_len);
-int ProcessService(char *in_buf, int in_len);
-int ProcessEvent(char *in_buf, int in_len);
-int ProcessCmd(char *in_buf, int in_len);
-int ProcessInfo(char *in_buf, int in_len);
+int ProcessRequest(mih_message_t *message);
+int ProcessService(mih_message_t *message);
+int ProcessEvent(mih_message_t *message);
+int ProcessCmd(mih_message_t *message);
+int ProcessInfo(mih_message_t *message);
 
-int CapabilityDiscover(char *in_buf, int in_len);
-int Register(char *in_buf, int in_len);
-int Deregister(char *in_buf, int in_len);
-int EventSubscribe(char *in_buf, int in_len);
-int EventUnsubscribe(char *in_buf, int in_len);
+int CapabilityDiscover(mih_message_t *message);
+int Register(mih_message_t *message);
+int Deregister(mih_message_t *message);
+int EventSubscribe(mih_message_t *message);
+int EventUnsubscribe(mih_message_t *message);
 
-int LinkDetected(char *in_buf, int in_len);
-int LinkUp(char *in_buf, int in_len);
-int LinkDown(char *in_buf, int in_len);
-int LinkParametersReport(char *in_buf, int in_len);
-int LinkGoingDown(char *in_buf, int in_len);
-int LinkHandoverImminent(char *in_buf, int in_len);
-int LinkHandoverComplete(char *in_buf, int in_len);
+int LinkDetected(mih_message_t *message);
+int LinkUp(mih_message_t *message);
+int LinkDown(mih_message_t *message);
+int LinkParametersReport(mih_message_t *message);
+int LinkGoingDown(mih_message_t *message);
+int LinkHandoverImminent(mih_message_t *message);
+int LinkHandoverComplete(mih_message_t *message);
 
-int LinkGetParameters(char *in_buf, int in_len);
-int LinkConfigureThresholds(char *in_buf, int in_len);
-int LinkActions(char *in_buf, int in_len);
-int NetHOCandidateQuery(char *in_buf, int in_len);
-int MNHOCandidateQuery(char *in_buf, int in_len);
-int N2NHOQueryResources(char *in_buf, int in_len);
-int MNHOCommit(char *in_buf, int in_len);
-int NetHOCommit(char *in_buf, int in_len);
-int N2NHOCommit(char *in_buf, int in_len);
-int MNHOComplete(char *in_buf, int in_len);
-int N2NHOComplete(char *in_buf, int in_len);
+int LinkGetParameters(mih_message_t *message);
+int LinkConfigureThresholds(mih_message_t *message);
+int LinkActions(mih_message_t *message);
+int NetHOCandidateQuery(mih_message_t *message);
+int MNHOCandidateQuery(mih_message_t *message);
+int N2NHOQueryResources(mih_message_t *message);
+int MNHOCommit(mih_message_t *message);
+int NetHOCommit(mih_message_t *message);
+int N2NHOCommit(mih_message_t *message);
+int MNHOComplete(mih_message_t *message);
+int N2NHOComplete(mih_message_t *message);

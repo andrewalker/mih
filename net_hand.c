@@ -5,6 +5,7 @@
  */
 
 #include "proto.c"
+#include "message.h"
 
 #define BUFFER_SIZE	4096
 
@@ -118,9 +119,18 @@ err:
 void handle_message(void *parameter)
 {
 	struct sockmsg *p = (struct sockmsg*)parameter;
+	int s = 0;
+	mih_message_t message;
 
-	ProcessRequest(p->msg, p->len);
+	s = unpack_mih_message(p->msg, p->len, &message);
+	if (s < 0)
+		goto out;
 
+	ProcessRequest(&message);
+	free_tlvs(&message.tlvs);
+
+out:
+	kfree(p->msg);
 	kfree(parameter);
 }
 
@@ -240,7 +250,7 @@ int udp_recv(struct socket *sock, struct sockaddr_in *addr, unsigned char *buf,
 
 int UdpHandler(void *data)
 {
-	char *buf = kmalloc(BUFFER_SIZE, GFP_KERNEL);
+	char *buf;
 	int received = 0;
 	struct sockaddr_in rxaddr;
 	struct sockmsg *parameter;
@@ -252,6 +262,7 @@ int UdpHandler(void *data)
 
 	/* Waits for messages from the network. */
 	while (!kthread_should_stop() && !_threads_should_stop) {
+		buf = kmalloc(BUFFER_SIZE, GFP_KERNEL);
 		memset(buf, 0, BUFFER_SIZE);
 		received = udp_recv(_udp_insock, &rxaddr, buf, BUFFER_SIZE);
 

@@ -10,6 +10,8 @@
   - use the length value just when packing and unpacking the PDUs
 */
 
+#ifndef MIH_H
+#define MIH_H
 
 // RFC 5677
 // ieee-mih   4551/tcp   MIH Services
@@ -770,7 +772,7 @@ typedef struct tlv {
 
 	unsigned char type;
 	unsigned int length; /* length semantics is dependent on TLV type  */
-	unsigned char value[];
+	void* value;
 } mih_tlv_t;
 
 typedef struct {
@@ -1158,4 +1160,5 @@ struct addrinfo {
 };
 #endif
 
+#endif
 

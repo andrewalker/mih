@@ -50,7 +50,7 @@ MIH_Capability_Discover_request(
 	mbb_ho_supp_t	* mbbhandoversupport)          // LIST(MBB_HO_SUPP)   // Optional
 {
 	mih_header_t header;
-	mih_tlv_t *tlv_list, *tlv;
+	/*mih_tlv_t *tlv_list, *tlv;*/
 
 	// sends an MIH Discovery request
 
@@ -68,12 +68,12 @@ MIH_Capability_Discover_request(
 	header.sid = SERVICE_MANAGEMENT; // Indentifies the different MIH services
 	header.opcode = REQUEST; // Type of operation (REQUEST, RESPONSE, INDICATION)
 	header.aid = MIH_CAPABILITY_DISCOVER; // Action to be taken with regard to the SID
-	header.tid = NewTid();
+	/*header.tid = NewTid();*/
 	header.payloadlength = 0;
 
 	// mih_tlv_t * NewTlv(unsigned char type, unsigned char * value, int length);
 
-	tlv_list = tlv = NewTlv(SRC_MIHF_ID_TLV, _mymihfid, strlen(_mymihfid));
+	/*tlv_list = tlv = NewTlv(SRC_MIHF_ID_TLV, _mymihfid, strlen(_mymihfid));
 
 	tlv->next=NewTlv(DST_MIHF_ID_TLV, destinationidentifier,strlen(destinationidentifier));
 	tlv=tlv->next;
@@ -107,7 +107,7 @@ MIH_Capability_Discover_request(
 		tlv->next = NewTlv(MBB_HO_SUPP_TLV,
 		                  (unsigned char *)mbbhandoversupport, sizeof(mbb_ho_supp_t));
 		tlv=tlv->next;
-	}
+	}*/
 
 	// transmit PDU: header + tlv list
 
