@@ -333,7 +333,6 @@ reuse_allocations:
 	}
 
 	sock_release(_udp_insock);
-	kfree(buf);
 
 	while (!kthread_should_stop())
 		msleep(1);
