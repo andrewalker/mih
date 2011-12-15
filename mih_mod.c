@@ -63,7 +63,6 @@ struct task_queue dispatch_queue;
 #include "mih_link_sap.c"
 #include "net_hand.c"
 #include "dev_mon.c"
-#include "mihf.c"
 
 void kill_net_hand_threads(void);
 
@@ -88,15 +87,17 @@ int mih_Init(void)
 	/* Initialization of local MIH identifier: done in context.c. (?) */
 
 	/* Global variable for Source MIHF ID. */
-	_src_mihf_id = kmalloc(sizeof(*_src_mihf_id) + mihf_id_len, GFP_KERNEL);
+	_src_mihf_id = kmalloc(sizeof(*_src_mihf_id), GFP_KERNEL);
 	_src_mihf_id->type = SRC_MIHF_ID_TLV;
-	_src_mihf_id->length = strlen(_mymihfid);
+	_src_mihf_id->length = mihf_id_len;
+	_src_mihf_id->value = kmalloc(mihf_id_len + 1, GFP_KERNEL);
 	memcpy(_src_mihf_id->value, _mymihfid, mihf_id_len);
 
 	/* Global variable for Destination MIHF ID. */
 	_dst_mihf_id = kmalloc(sizeof(*_dst_mihf_id) + mihf_id_len, GFP_KERNEL);
 	_dst_mihf_id->type = DST_MIHF_ID_TLV;
-	_dst_mihf_id->length = strlen(_mymihfid);
+	_dst_mihf_id->length = mihf_id_len;
+	_dst_mihf_id->value = kmalloc(mihf_id_len + 1, GFP_KERNEL);
 	memcpy(_dst_mihf_id->value, _mymihfid, mihf_id_len);
 
 	return 0;

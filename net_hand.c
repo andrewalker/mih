@@ -7,12 +7,11 @@
 #include "proto.c"
 #include "message.h"
 
-#define BUFFER_SIZE	4096
-
-struct sockmsg {
-	struct socket	*sock;
-	int		len;
-	char		*msg;
+struct received_message {
+	struct socket		*sock;
+	int			len;
+	char			*msg;
+	struct reply_handler	*reply;
 };
 
 /* Global data structures. */
@@ -24,6 +23,8 @@ static int UdpSockInit(struct sockaddr_in *rxaddr);
 static int TcpSockInit(void);
 int UdpHandler(void *);
 int TcpHandler(void *);
+int udp_send(struct socket *sock, struct sockaddr_in *addr, unsigned char *buf,
+		int length);
 
 
 static int UdpSockInit(struct sockaddr_in *rxaddr)
@@ -118,7 +119,7 @@ err:
 
 void handle_message(void *parameter)
 {
-	struct sockmsg *p = (struct sockmsg*)parameter;
+	struct received_message *p = (struct received_message*)parameter;
 	int s = 0;
 	mih_message_t message;
 
@@ -126,9 +127,8 @@ void handle_message(void *parameter)
 	if (s < 0)
 		goto out;
 
-	ProcessRequest(&message);
+	ProcessRequest(&message, p->reply);
 	free_tlvs(&message.tlvs);
-
 out:
 	kfree(p->msg);
 	kfree(parameter);
@@ -143,6 +143,42 @@ void handle_connection(void *parameter)
 	/* Process the socket and releases it. */
 	if (sock)
 		sock_release(sock);
+}
+
+void handle_udp_reply(void *parameter)
+{
+	struct reply_parameter *p = (struct reply_parameter*)parameter;
+	struct socket *sock;
+	char *buffer;
+	int s;
+
+	buffer = kmalloc(BUFFER_SIZE, GFP_KERNEL);
+
+	if (p->message == NULL) {
+		kfree(p->param);
+		goto param_out;
+	}
+
+	s = sock_create(PF_INET, SOCK_DGRAM, IPPROTO_UDP, &sock);
+	if (s < 0) {
+		printk(KERN_ERR "Failed to create UDP socket to send reply");
+		goto msg_out;
+	}
+
+	s = pack_mih_message(p->message, buffer, BUFFER_SIZE);
+	if (s < 1)
+		goto sock_out;
+
+	udp_send(sock, (struct sockaddr_in*)p->param, buffer, s);
+
+sock_out:
+	sock_release(sock);
+msg_out:
+	free_tlvs(&p->message->tlvs);
+	kfree(p->message);
+param_out:
+	kfree(p);
+	kfree(buffer);
 }
 
 int TcpHandler(void *data)
@@ -252,30 +288,46 @@ int UdpHandler(void *data)
 {
 	char *buf;
 	int received = 0;
-	struct sockaddr_in rxaddr;
-	struct sockmsg *parameter;
+	struct sockaddr_in bind_addr;
+	struct sockaddr_in *rxaddr;
+	struct reply_handler *reply_hand;
+	struct received_message *parameter;
 
-	if (UdpSockInit(&rxaddr) < 0) {
+	if (UdpSockInit(&bind_addr) < 0) {
 		printk(KERN_INFO "MIH UdpHand: failed creating socket\n");
 		return -1;
 	}
 
 	/* Waits for messages from the network. */
 	while (!kthread_should_stop() && !_threads_should_stop) {
+		rxaddr = kmalloc(sizeof(*rxaddr), GFP_KERNEL);
 		buf = kmalloc(BUFFER_SIZE, GFP_KERNEL);
+
+reuse_allocations:
 		memset(buf, 0, BUFFER_SIZE);
-		received = udp_recv(_udp_insock, &rxaddr, buf, BUFFER_SIZE);
+		received = udp_recv(_udp_insock, rxaddr, buf, BUFFER_SIZE);
 
 		if (received < 0) {
 			printk(KERN_ERR "MIH UdpHand: failed to receive UDP "
 					"message\n");
-			continue;
+			if (!kthread_should_stop() && !_threads_should_stop) {
+				goto reuse_allocations;
+			}
+
+			kfree(rxaddr);
+			kfree(buf);
+			break;
 		}
+
+		reply_hand = kmalloc(sizeof(*reply_hand), GFP_KERNEL);
+		reply_hand->handler = &handle_udp_reply;
+		reply_hand->param = rxaddr;
 
 		parameter = kmalloc(sizeof(*parameter), GFP_KERNEL);
 		parameter->sock = NULL;
 		parameter->msg = buf;
 		parameter->len = received;
+		parameter->reply = reply_hand;
 
 		queue_task(&mihf_queue, &handle_message, parameter);
 	}

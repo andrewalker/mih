@@ -1,12 +1,23 @@
+struct reply_parameter {
+	mih_message_t	*message;
+	void		*param;
+};
+
+struct reply_handler {
+	void		(*handler)(void*);
+	void		*param;
+};
+
+
 /*
  * Protocol handling functions
  */
 
-int ProcessRequest(mih_message_t *message);
-int ProcessService(mih_message_t *message);
-int ProcessEvent(mih_message_t *message);
-int ProcessCmd(mih_message_t *message);
-int ProcessInfo(mih_message_t *message);
+int ProcessRequest(mih_message_t *message, struct reply_handler* reply);
+int ProcessService(mih_message_t *message, struct reply_handler* reply);
+int ProcessEvent(mih_message_t *message, struct reply_handler* reply);
+int ProcessCmd(mih_message_t *message, struct reply_handler* reply);
+int ProcessInfo(mih_message_t *message, struct reply_handler* reply);
 
 int CapabilityDiscover(mih_message_t *message);
 int Register(mih_message_t *message);

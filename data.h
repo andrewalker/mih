@@ -5,7 +5,7 @@
 int _tid;       /* local Transaction ID */
 
 /* MyMihfID (MIHF_ID): The MIHF ID of this MIH node */
-unsigned char _mymihfid[MIH_ID_LEN];  /* MIHF Identifier */
+unsigned char _mymihfid[] = "mihf1";  /* MIHF Identifier */
 
 /* PeerMihfID (MIHF_ID): The MIHF ID of the peer MIH node */
 unsigned char _peermihfid[MIH_ID_LEN];  /* MIHF Identifier */

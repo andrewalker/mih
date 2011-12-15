@@ -5,7 +5,60 @@
 #include "proto.h"
 
 
-int ProcessService(mih_message_t *message)
+int queue_message(mih_message_t *message, struct reply_handler *reply)
+{
+	struct reply_parameter *param;
+
+	param = kmalloc(sizeof(*param), GFP_KERNEL);
+	param->message = message;
+	param->param = reply->param;
+
+	queue_task(&dispatch_queue, reply->handler, (void*)param);
+
+	return 0;
+}
+
+int Acknowledge(int sid, int opcode, int aid, int tid, char* dst_mihf_id,
+	struct reply_handler *reply)
+{
+	mih_tlv_t *ack_src_mihf_id_tlv;
+	mih_tlv_t *ack_dst_mihf_id_tlv;
+	mih_message_t* ack_msg;
+	int src_mihf_id_len = strlen(_mymihfid);
+	int dst_mihf_id_len = strlen(dst_mihf_id);
+
+	ack_msg = kmalloc(sizeof(*ack_msg), GFP_KERNEL);
+	ack_src_mihf_id_tlv = kmalloc(sizeof(*ack_src_mihf_id_tlv), GFP_KERNEL);
+	ack_dst_mihf_id_tlv = kmalloc(sizeof(*ack_dst_mihf_id_tlv), GFP_KERNEL);
+
+	memset(&ack_msg->header, 0, sizeof(ack_msg->header));
+	ack_msg->header.version = 1;
+	ack_msg->header.ackrsp = 1;
+	ack_msg->header.sid = sid;
+	ack_msg->header.opcode = opcode;
+	ack_msg->header.aid = aid;
+	ack_msg->header.tid = tid;
+
+	ack_src_mihf_id_tlv->type = SRC_MIHF_ID_TLV;
+	ack_src_mihf_id_tlv->length = src_mihf_id_len;
+	ack_src_mihf_id_tlv->value = kmalloc(src_mihf_id_len + 1, GFP_KERNEL);
+	strcpy(ack_src_mihf_id_tlv->value, _mymihfid);
+
+	ack_dst_mihf_id_tlv->type = DST_MIHF_ID_TLV;
+	ack_dst_mihf_id_tlv->length = dst_mihf_id_len;
+	ack_dst_mihf_id_tlv->value = kmalloc(dst_mihf_id_len + 1, GFP_KERNEL);
+	strcpy(ack_dst_mihf_id_tlv->value, dst_mihf_id);
+
+	INIT_LIST_HEAD(&ack_msg->tlvs.list);
+	list_add_tail(&ack_src_mihf_id_tlv->list, &ack_msg->tlvs.list);
+	list_add_tail(&ack_dst_mihf_id_tlv->list, &ack_msg->tlvs.list);
+
+	queue_message(ack_msg, reply);
+	
+	return 0;
+}
+
+int ProcessService(mih_message_t *message, struct reply_handler* reply)
 {
 	int res = -1;
 
@@ -41,7 +94,7 @@ int ProcessService(mih_message_t *message)
 }
 
 
-int ProcessEvent(mih_message_t *message)
+int ProcessEvent(mih_message_t *message, struct reply_handler *reply)
 {
 	int res = -1;
 
@@ -83,7 +136,7 @@ int ProcessEvent(mih_message_t *message)
 }
 
 
-int ProcessCmd(mih_message_t *message)
+int ProcessCmd(mih_message_t *message, struct reply_handler *reply)
 {
 	int res = -1;
 
@@ -137,7 +190,7 @@ int ProcessCmd(mih_message_t *message)
 }
 
 
-int ProcessInfo(mih_message_t *message)
+int ProcessInfo(mih_message_t *message, struct reply_handler *reply)
 {
 	int res = -1;
 
@@ -173,28 +226,44 @@ int ProcessInfo(mih_message_t *message)
 }
 
 
-int ProcessRequest(mih_message_t *message)
+int ProcessRequest(mih_message_t *message, struct reply_handler *reply)
 {
+	mih_tlv_t *src_mihf_id_tlv = list_first_entry(&message->tlvs.list,
+			mih_tlv_t, list);
+	mih_tlv_t *dst_mihf_id_tlv = list_entry(src_mihf_id_tlv->list.next,
+			mih_tlv_t, list);
+	char *src_mihf_id = (char*)src_mihf_id_tlv->value;
+	char *dst_mihf_id = (char*)dst_mihf_id_tlv->value;
 	int res = -1;
 
 	if (verbose) {
 		printk(KERN_INFO "MIH: Processing request\n");
 	}
 
+	if (strcmp(dst_mihf_id, _mymihfid) != 0) {
+		goto out;
+	}
+
+	if (message->header.ackreq) {
+		Acknowledge(message->header.sid, message->header.opcode,
+				message->header.aid, message->header.tid,
+				src_mihf_id, reply);
+	}
+
 	/* Do we need a structure for holding the information extracted from
 	   the PDU? */
 	switch (message->header.sid) {
 		case (SERVICE_MANAGEMENT):
-			res = ProcessService(message);
+			res = ProcessService(message, reply);
 			break;
 		case (EVENT_SERVICE):
-			res = ProcessEvent(message);
+			res = ProcessEvent(message, reply);
 			break;
 		case (COMMAND_SERVICE):
-			res = ProcessCmd(message);
+			res = ProcessCmd(message, reply);
 			break;
 		case (INFORMATION_SERVICE):
-			res = ProcessInfo(message);
+			res = ProcessInfo(message, reply);
 			break;
 		default:
 			if (verbose)
@@ -202,6 +271,7 @@ int ProcessRequest(mih_message_t *message)
 						"received\n");
 			break;
 	}
+out:
 	return res;
 }
 
@@ -210,15 +280,15 @@ int CapabilityDiscover(mih_message_t *message)
 {
 	int res = -1;
 
-	mihf_id_t sourceidentifier;
+	mihf_id_t src_id;
 	/* mihf_id_t  destinationidentifier; */
 	status_t status;
-	net_type_addr_t *linkaddresslist; /* LIST(NET_TYPE_ADDR) */
-	mih_evt_list_t *supportedmiheventlist; /* MIH_EVT_LIST */
-	mih_cmd_list_t *supportedmihcommandlist; /* MIH_CMD_LIST */
-	mih_iq_type_lst_t *supportedisquerytypelist; /* MIH_IQ_TYPE_LST */
-	mih_trans_lst_t *supportedtransportlist; /* MIH_TRANS_LST */
-	mbb_ho_supp_t *mbbhandoversupport;
+	net_type_addr_t *link_addrs;
+	mih_evt_list_t *supported_events;
+	mih_cmd_list_t *supported_commands;
+	mih_iq_type_lst_t *supported_is_query_types;
+	mih_trans_lst_t *supported_transports;
+	mbb_ho_supp_t *mbb_ho_support;
 
 	if (verbose)
 		printk(KERN_INFO "MIH: Capability Discovery\n");
@@ -228,17 +298,8 @@ int CapabilityDiscover(mih_message_t *message)
 
 	/* Compare destinationidentifier with local identifier (_mymihfid)? */
 
-	/* Requests and responses may arrive from the network. */
 	switch (message->header.opcode) {
 		case (REQUEST):
-			res = MIH_Capability_Discover_indication(
-					sourceidentifier,
-					linkaddresslist,
-					supportedmiheventlist,
-					supportedmihcommandlist,
-					supportedisquerytypelist,
-					supportedtransportlist,
-					mbbhandoversupport);
 
 			/* Respond automatically? */
 
@@ -246,14 +307,14 @@ int CapabilityDiscover(mih_message_t *message)
 
 		case (RESPONSE):
 			res = MIH_Capability_Discover_confirm(
-					sourceidentifier,
+					src_id,
 					status,
-					linkaddresslist,
-					supportedmiheventlist,
-					supportedmihcommandlist,
-					supportedisquerytypelist,
-					supportedtransportlist,
-					mbbhandoversupport);
+					link_addrs,
+					supported_events,
+					supported_commands,
+					supported_is_query_types,
+					supported_transports,
+					mbb_ho_support);
 			break;
 
 		default:

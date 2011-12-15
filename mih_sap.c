@@ -117,17 +117,16 @@ MIH_Capability_Discover_request(
 
 int
 MIH_Capability_Discover_indication(
-	mihf_id_t destinationidentifier,              // MIHF_ID
-	net_type_addr_t * linkaddresslist,            // LIST(NET_TYPE_ADDR) // Optional
-	mih_evt_list_t  * supportedmiheventlist,      // MIH_EVT_LIST        // Optional
-	mih_cmd_list_t  * supportedcommandlist,       // MIH_CMD_LIST        // Optional
-	mih_iq_type_lst_t * supportedisquerytypelist, // MIH_IQ_TYPE_LST     // Optional
-	mih_trans_lst_t * supportedtransportlist,     // MIH_TRANS_LST       // Optional
-	mbb_ho_supp_t	* mbbhandoversupport)          // LIST(MBB_HO_SUPP)   // Optional
+	mihf_id_t		src_id,
+	net_type_addr_t		*link_addrs,
+	mih_evt_list_t		*supported_events,
+	mih_cmd_list_t		*supported_commands,
+	mih_iq_type_lst_t	*supported_is_query_types,
+	mih_trans_lst_t		*supported_transports,
+	mbb_ho_supp_t		*mbb_ho_support)
 {
 	// notify the MIH User &
 	// Respond with an MIH_Capability_Discover_response primitive
-	// respond automatically?
 
 	return 0;
 }
