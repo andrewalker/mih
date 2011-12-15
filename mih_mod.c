@@ -43,7 +43,8 @@ MODULE_PARM_DESC(verbose, "Causes control messages to be sent to "
 
 /* Global variables. */
 
-struct task_struct *_net_hand_t = NULL;	/* Kernel thread. */
+struct task_struct *_tcp_hand_t = NULL;	/* Kernel thread. */
+struct task_struct *_udp_hand_t = NULL;	/* Kernel thread. */
 struct task_struct *_dev_mon_t = NULL;	/* Kernel thread. */
 struct task_struct *_mihf_t = NULL;	/* Kernel thread. */
 struct task_struct *_dispatch_t = NULL;	/* Kernel thread. */
@@ -64,7 +65,7 @@ struct task_queue dispatch_queue;
 #include "dev_mon.c"
 #include "mihf.c"
 
-void kill_net_hand_thread(void);
+void kill_net_hand_threads(void);
 
 /*
  * Controls whether symbols are exported or not.
@@ -130,7 +131,9 @@ static int __init mod_Start(void)
 	}
 
 	/* Create working kernel threads. */
-	if ((_net_hand_t = kthread_run(NetHandler, NULL, MODULE_NAME)) == NULL)
+	/*if ((_tcp_hand_t = kthread_run(TcpHandler, NULL, MODULE_NAME)) == NULL)
+		goto kthread_failure;*/
+	if ((_udp_hand_t = kthread_run(UdpHandler, NULL, MODULE_NAME)) == NULL)
 		goto kthread_failure;
 	if ((_dev_mon_t = kthread_run(DevMon, NULL, MODULE_NAME)) == NULL)
 		goto kthread_failure;
@@ -154,7 +157,7 @@ kthread_failure:
 
 	_threads_should_stop = 1;
 
-	kill_net_hand_thread();
+	kill_net_hand_threads();
 	if (_dev_mon_t)
 		kthread_stop(_dev_mon_t);
 	if (_mihf_t)
@@ -165,35 +168,54 @@ kthread_failure:
 	return err;
 }
 
-void kill_net_hand_thread(void)
+void kill_net_hand_threads(void)
 {
+	char buffer[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xAA };
 	int s;
 	struct sockaddr_in loopback_addr;
 	struct socket *wakeup_socket;
 
 
-	if (!_net_hand_t)
-		return;
-
 	/* Use a socket to force the net_hand thread to wake up */
 	memset(&loopback_addr, 0, sizeof(loopback_addr));
-	loopback_addr.sin_family = AF_INET;
 	loopback_addr.sin_port = htons(MIHF_PORT);
 	loopback_addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+	loopback_addr.sin_family = AF_INET;
 
-	s = sock_create(PF_INET, SOCK_STREAM, IPPROTO_TCP, &wakeup_socket);
-	if (s < 0) {
-		printk(KERN_ERR "MIH Main module: error %d creating wake-up "
-				"socket\n", s);
-		return;
+	if (_tcp_hand_t) {
+		s = sock_create(PF_INET, SOCK_STREAM, IPPROTO_TCP,
+				&wakeup_socket);
+		if (s < 0) {
+			printk(KERN_ERR "MIH Main module: error %d creating "
+					"wake-up socket\n", s);
+			return;
+		}
+
+		wakeup_socket->ops->connect(wakeup_socket,
+				(struct sockaddr *)&loopback_addr,
+				sizeof(loopback_addr), O_RDWR);
+		sock_release(wakeup_socket);
+
+		kthread_stop(_tcp_hand_t);
 	}
 
-	wakeup_socket->ops->connect(wakeup_socket,
-			(struct sockaddr *)&loopback_addr,
-			sizeof(loopback_addr), O_RDWR);
-	wakeup_socket->ops->shutdown(wakeup_socket, SHUT_RDWR);
+	if (_udp_hand_t) {
+		s = sock_create(AF_INET, SOCK_DGRAM, IPPROTO_UDP,
+				&wakeup_socket);
+		if (s < 0) {
+			printk(KERN_ERR "MIH Main module: error %d creating "
+					"wake-up socket\n", s);
+			return;
+		}
 
-	kthread_stop(_net_hand_t);
+		wakeup_socket->ops->connect(wakeup_socket,
+				(struct sockaddr*)&loopback_addr,
+				sizeof(loopback_addr), O_RDWR);
+		udp_send(wakeup_socket, &loopback_addr, buffer, sizeof(buffer));
+		sock_release(wakeup_socket);
+
+		kthread_stop(_udp_hand_t);
+	}
 }
 
 static void __exit mod_End(void)
@@ -201,7 +223,7 @@ static void __exit mod_End(void)
 	_threads_should_stop = 1;
 
 	/* Stop kernel threads. */
-	kill_net_hand_thread();
+	kill_net_hand_threads();
 	if (_dev_mon_t)
 		kthread_stop(_dev_mon_t);
 	if (_mihf_t)
