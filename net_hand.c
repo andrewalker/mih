@@ -32,7 +32,7 @@ static int UdpSockInit(struct sockaddr_in *rxaddr)
 	int s;
 
 	/* The inbound address. */
-	memset(rxaddr, 0, sizeof(rxaddr));
+	memset(rxaddr, 0, sizeof(*rxaddr));
 	rxaddr->sin_family = AF_INET;
 	rxaddr->sin_port = htons(MIHF_PORT);
 	rxaddr->sin_addr.s_addr = htonl(INADDR_ANY);
