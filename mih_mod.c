@@ -17,6 +17,7 @@
 #include <linux/ieee80211.h>	/* For IEEE80211_MAX_SSID_LEN. */
 
 #include <net/cfg80211.h>	/* For wireless_dev. */
+#include <net/iw_handler.h>	/* For net_device in dev_mon.c */
 
 #include "mih.h"		/* Local type definitions for MIH. */
 #include "data.h"		/* Internal data structures for MIH. */
